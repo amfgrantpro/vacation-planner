@@ -59,7 +59,7 @@ export function ChatInterface({ messages, onSendMessage, isLoading }: ChatInterf
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
-                        placeholder="Where are you thinking of going?"
+                        placeholder="What are you thinking about for your next vacation?"
                         className="flex-1 p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                         disabled={isLoading}
                     />

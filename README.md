@@ -8,12 +8,6 @@ To build a functional Travel Decision Assistant by simulating a **Real-World Pro
 - **Beyond Chat**: Moving from "text-in/text-out" to "state-machine-driven workflows".
 - **Beyond Tutorials**: Making architectural choices that scale (Typed Interfaces, Client-Server separation, Tool Abstractions).
 
-## **Architecture (Sprint 1)**
-- **Frontend**: React (Vite) + Tailwind CSS.
-- **Backend**: Python (FastAPI).
-- **Agent Logic**: Stateless "loop" managing a strict Pydantic State Object.
-- **Infrastructure**: Localhost (simulating cloud microservices).
-
 ## **Quick Start**
 
 ### **1. Environment Setup**
@@ -34,14 +28,33 @@ pip install -r requirements.txt
 **Environment Variables**
 Copy `.env.example` to `.env` (or use the provided `.env`) and ensure you have valid API keys for `GROQ_API_KEY` (Primary) or `OPENAI_API_KEY`.
 
-### **2. Explore the Logic**
-- See `learning-notebooks/3_agent_loop.ipynb` for a breakdown of the "State Machine" pattern vs the "Basic Chatbot" pattern.
+### **2. Running Locally**
 
-## **Documentation**
-- [Project Brief](docs/planning/1_Project-brief-agentic-tool.md)
-- [Project Plan](docs/planning/2_Project-plan-agentic-travel-planner.md)
-- [MVP Roadmap](docs/planning/3_MVP-plan-agentic-travel-planner.md)
-- [Sprint 1 Spec](docs/planning/4_Build-spec-agentic-travel-planner.md)
-- [Agent Guidelines](agents.md) - *Read this to understand our Engineering Standards.*
+To run the full application, you need to start both the backend and frontend.
+
+#### **Backend (API)**
+```bash
+cd services/api
+uvicorn main:app --reload --port 8000
+```
+
+#### **Frontend (Web)**
+```bash
+cd apps/web
+npm install  # First time only
+npm run dev
+```
+The app will be available at [http://localhost:5173](http://localhost:5173).
+
+## **Core Architecture**
+- **Frontend**: React (Vite) + Tailwind CSS.
+- **Backend**: Python (FastAPI).
+- **Agent Logic**: Stateless "loop" managing a structured Pydantic State Object.
+- **Infrastructure**: Client-Server separation simulating production AI services.
+
+## **Documentation & Learning**
+- [Project Brief](docs/project-brief/1_Project-brief-agentic-tool.md)
+- [Agent Guidelines](agents.md)
+- [Learning Notebooks](learning-notebooks/) - *Explore the agent loop logic and evals.*
 
 ---
