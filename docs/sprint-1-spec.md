@@ -1,4 +1,4 @@
-# Sprint 1 Implementation Plan: Real-World Agent Foundation
+# Sprint 1 Implementation Spec: Real-World Agent Foundation
 
 ## **Scope & Non-Goals**
 **Objective**: Build a production-grade, "headless" agent loop and a minimal web interface. The goal is to establish the *correct* architecture for a scalable AI product, even if the feature set is small (destination selection only).

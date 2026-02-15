@@ -1,6 +1,6 @@
-# **Build Spec: Agentic Travel planning tool**
+# **Sprint 1 Plan: Agentic Travel planning tool**
 
-## **Sprint 1 (Raw Agent Loop \+ State)**
+## **Sprint 1 (Build the smallest Agent Loop \+ State)**
 
 Objective:  
 Build a single-user web chat that calls an LLM and behaves like a destination-decision assistant across 10–20 turns. The system must persist (a) full conversation history and (b) a mutable state object that the model updates every turn.
