@@ -31,8 +31,8 @@ To simulate a High-Performance AI Product Team, we follow a strict feedback-driv
 - **Agent (AI)**: Proposes technical specs, builds according to the agreed plan, and guides the PM on industry-standard AI patterns.
 
 ### **The Workflow Loop**
-1.  **Planning-First**: The PM and Agent collaborate in a planning document (e.g., `sprint-X-planning.md`) to align on goals and priorities.
-2.  **Spec-Next**: Once Planning is complete, the Agent writes a detailed Implementation Spec (e.g., `sprint-X-spec.md`) for human review.
+1.  **Planning-First**: The PM and Agent collaborate in a planning document (e.g., `docs/sprint-X-planning.md`) to align on goals and priorities.
+2.  **Spec-Next**: Once Planning is complete, the Agent writes a detailed Implementation Spec (e.g., `docs/sprint-X-spec.md`) for human review.
 3.  **PM Review**: The PM reviews the spec to catch missing requirements or design flaws.
 4.  **Code-Changes**: The Agent implements the logic only after the spec is approved.
 5.  **Tweak-Together**: Using evaluation tools (like the **Testing Workbench**), the PM and Agent iterate on prompts and logic in real-time to refine the "vibe" and performance.

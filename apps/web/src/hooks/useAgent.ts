@@ -8,8 +8,7 @@ export function useAgent() {
     const [sessionId] = useState(() => Math.random().toString(36).substring(7));
 
     const sendMessage = async (content: string) => {
-        // Optimistic update
-        const newMessages = [...messages, { role: 'user', content } as ChatMessage];
+        const newMessages: ChatMessage[] = [...messages, { role: 'user', content }];
         setMessages(newMessages);
         setIsLoading(true);
 
@@ -23,11 +22,24 @@ export function useAgent() {
             if (!res.ok) throw new Error('Network response was not ok');
 
             const data = await res.json();
-            setMessages([...newMessages, { role: 'assistant', content: data.response }]);
+
+            const assistantMessage: ChatMessage = {
+                role: 'assistant',
+                content: data.response,
+                comparison_matrix: data.comparison_matrix ?? null,
+            };
+
+            setMessages([...newMessages, assistantMessage]);
             setPlan(data.plan);
         } catch (error) {
             console.error(error);
-            setMessages([...newMessages, { role: 'assistant', content: 'Error connecting to agent. Please ensure the backend is running on port 8000.' }]);
+            setMessages([
+                ...newMessages,
+                {
+                    role: 'assistant',
+                    content: 'Error connecting to agent. Please ensure the backend is running on port 8000.',
+                },
+            ]);
         } finally {
             setIsLoading(false);
         }

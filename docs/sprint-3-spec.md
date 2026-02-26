@@ -42,10 +42,9 @@ The existing Client-Server (React + FastAPI) architecture remains, but the paylo
 The loop evolves to force convergence and validate phase transitions:
 
 1. **Analyze (Input & State)**: LLM reads History + Rich State (including current active candidates and `phase`).
-2. **Systemic Unknowns**: Instead of tracking superficial conversational tangents, the agent must specifically extract *decision-blocking unknowns* into `mental_model.unknowns` to ensure we solve key uncertainties.
-3. **Phase Check & Gap Assessment**: Does the State satisfy the requirements to exit the current Phase? (e.g., Do we have 3 candidates to move from `Explore` to `Compare`?).
-4. **Tool Call**: 
-   - `update_plan(patch)`: Modify constraints or systemic unknowns.
+2. **Phase Check & Gap Assessment**: Does the State satisfy the requirements to exit the current Phase? (e.g., Do we have 3 candidates to move from `Explore` to `Compare`?).
+3. **Tool Call**: 
+   - `update_plan(patch)`: Modify general constraints. (Specific unknowns and decision criteria are tracked directly against each `DestinationCandidate`).
    - `manage_candidates(action, destinations)`: Explicitly `add`, `eliminate`, or `evaluate` candidates in the cart.
    - `transition_phase(new_phase)`: Move the funnel forward.
 4. **Structured Response Formatting**: The LLM outputs the final result as a strict JSON schema containing the conversational reply and any structured multi-criteria data needed by the UI.
@@ -70,6 +69,7 @@ class DestinationCandidate(BaseModel):
     status: str  # "active" or "eliminated"
     rationale: str  # Why it was kept or removed
     pros_cons: Optional[dict] = None  # Populated in Compare phase
+    decision_criteria: Optional[dict] = None  # Tracks specific unknowns and main deciding factors
 
 class VacationPlan(BaseModel):
     phase: Phase = Phase.INTAKE
@@ -87,10 +87,10 @@ class VacationPlan(BaseModel):
 
 ## **6. Tool Calling Approach**
 
-1. **`update_plan(patch: dict)`**: Maintained for updating `trip_shape` and `mental_model`.
+1. **`update_plan(patch: dict)`**: Maintained for updating `trip_shape` and general `mental_model`.
 2. **`manage_candidates(action: str, data: list)`**: 
    - Operations: `add`, `eliminate`, `update_rationale`.
-   - **Crucial Rule**: In the `Explore` phase, the agent must *explicitly ask the user* before adding a location to the cart.
+   - **Crucial Rule**: The agent should proactively curate a top 3 vacation spots based on the user's likes. A user explicitly telling the agent to "add" an option means it should be ranked highly. The agent and user work together to maintain this top 3 without the agent needing explicit permission for every addition.
 3. **`transition_phase(target_phase: str)`**: 
    - Triggers the State Machine to move up the funnel. Backward movement (e.g., `Compare` -> `Explore`) is permitted if the user wants to reconsider options.
 4. **`generate_mcdm_matrix(criteria: list)`**: 
@@ -101,9 +101,9 @@ class VacationPlan(BaseModel):
 ## **7. Phase-Gated Task Breakdown**
 
 ### **Phase 1: State Machine & Funnel Logic (Backend) - [NOT YET EXECUTED]**
-- [ ] **Task 1.1**: Update `models.py` with `DestinationCandidate`, `Phase` enum, and modify `VacationPlan`.
+- [ ] **Task 1.1**: Update `models.py` with `DestinationCandidate` (including `decision_criteria`), `Phase` enum, and modify `VacationPlan`.
 - [ ] **Task 1.2**: Implement `manage_candidates` and `transition_phase` tools in `orchestrator.py`. Ensure backward phase movement is supported.
-- [ ] **Task 1.3**: Update `prompt.py` to: strictly enforce 4 phases, enforce explicit permission before adding candidates, and fix the extraction of *systemic decision blockers* for `unknowns`. Ensure LLM uses strict JSON mode.
+- [ ] **Task 1.3**: Update `prompt.py` to: strictly enforce 4 phases, intuitively curate the top 3 active candidates based on user interest, and track major unknowns/decision criteria against each location. Ensure LLM uses strict JSON mode.
 
 ### **Phase 2: Structured Outputs & UI Foundation - [NOT YET EXECUTED]**
 - [ ] **Task 2.1**: Refactor Orchestrator LLM return type to output strictly formatted JSON (`text_reply`, `comparison_matrix` as list of rows) using Groq JSON mode/Langchain structured output.
@@ -125,7 +125,7 @@ class VacationPlan(BaseModel):
 4. **Backward Movement in the Funnel**: Can the agent explicitly jump back from `Compare` to `Explore` if the user rejects all candidates, or do we reset the list and stay in the same phase? Answer: Yes. The tactics for each stage are different, but the user might want to add things after passing a stage.
 5. **JSON Formatting for Frontend**: Does the frontend expect the comparison matrix to be a list of rows, columns, or a normalized relational mapping? Answer: A list of rows? I don't know - I thought you'd propose something rational.
 6. **MCDM Single Score**: Should the comparison matrix yield one final "Recommendation Score" (1-10) or just present the trade-offs (Cost vs Travel Time)? Answer: Trade-offs. At this stage, I just want to see that it considers them.
-7. **Implicit vs Explicit Addition**: In the `Explore` phase, should the agent auto-add every location it mentions to the Cart, or explicitly ask the user "Should I add this?" first? Answer: Explicitly ask the user.
+7. **Implicit vs Explicit Addition**: In the `Explore` phase, should the agent auto-add every location it mentions to the Cart, or explicitly ask the user "Should I add this?" first? Answer: The agent and user should collaborate to curate a top 3. The agent should intuitively maintain the top 3 based on user interest, treating explicit requests to add as a strong ranking signal, rather than requiring permission for every addition.
 8. **Finalization Action**: How does Sprint 3 handle the very end of the funnel? Does it just stop at comparing, or is there a simulated "Select Winner" state? Answer: Stop at comparing. Having a (ranked) top 3 is enough.
 9. **Displaying Constraints in UI**: Since the Cart is a sidebar, should we also visualize the fixed constraints (Budget, Duration) above the candidates so the user can see *why* candidates are there? Answer: Yes. We need it for debugging.
 10. **LLM Output Constraints**: Are we okay using strict JSON Mode on Groq to guarantee the output schema of the final response, replacing the markdown stream? Answer: I don't know - I thought you'd propose something rational.
