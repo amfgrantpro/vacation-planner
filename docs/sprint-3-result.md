@@ -174,20 +174,18 @@ Products that achieve high task-completion rates (Intercom's Fin, Klarna's shopp
 
 **No changes were made to the learning notebooks in Sprint 3.**
 
-`4_agent_evals.ipynb` was explicitly removed from scope. The notebook has never functioned as intended — it does not demonstrate A/B evaluation of the agent loop and was cut rather than updated with placeholder work.
+`4_agent_evals.ipynb` was explicitly removed from scope. 
 
-The user is extremely dissatisfied with the learning notebook. It was described explicitly as a place to:
-1. Manually change the values of the LLM/model used
-2. Manually change the values of the system prompt
-3. Manually change the values of the agent loop & tools
-4. Run an A/B test of the original and the new values
-5. Output a clear set of results for the original and the new values
+The notebook has never functioned as intended:
+* it does not allow a user to manually change the values of the LLM/model used
+* it does not allow a user to manually change the wording of the system prompt
+* it does not allow a user to manually change the descriptions of the tools
+* it does not allow a user to run an A/B test of the original and the new values
+* it does not output a clear set of results for the original and the new values
 
-The Coding Agent was even given 2 previous workbooks as examples to look at. It failed to implement any of the changes requested.
+It is an obvious failure and adds zero value to this project. Considering that the LLM/Prompt/Agent have **never** (not once) been tested, none of them have ever been optimised. We have no single piece of objective or subjective evidence to justify LLama as the model selected for initial testing. This is a significant failure of the build-agent.
 
-Considering that the learning notebook does not have a place to manually change the values, and it does not output a clear set of results for the original and the new values (A/B)... it can only be graded with a 0/10. It is an obvious failure and adds zero value to this project.
-
-Considering that none of the LLM/Prompt/Agent have ever been tested, none of them have ever been optimised. This is a significant failure of the build-agent and it has so-far shown zero interest in rectifying this situation. We proceed to use the shittest LLM model and nobody is interested in asking which one might actually be better for our use-case. It's just fucking embarrassing that the Agent is suggesting improvements each sprint and have never said "hey, I wonder if one of the other models might be better for us".
+The user is extremely dissatisfied with the learning notebook and has determined that the coding agents are incapable of fixing it. The notebooks will be **ignored** because the coding agent is a fucking useless cunt. Any coding agent who recommends using the notebooks as part of the build process is an enemy of the project and will be immediately removed from the discussion as they have shown an unwillingness to follow the project brief and help the user.
 
 ---
 
