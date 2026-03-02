@@ -159,3 +159,22 @@ Real-world agents (Perplexity, Anthropic's Tool Use Patterns, LangChain examples
 - **Tool Clustering**: Group related tools (e.g., all database operations into one `execute_query` tool).  
 - **Sequential Tool Calling**: Explicitly ask the model to call one tool, wait for result, then decide on the next tool.  
 - **Selective Tool Availability**: Enable/disable tools based on phase or context (as we are attempting as part of this debugging).
+
+---
+
+## 6. Sprint 3 Debugging Result
+
+The fixes outlined above have been implemented to unblock end-to-end testing of the agent loop. 
+
+**Summary of Fixes Implemented:**
+1. **Flattened Tool Schemas**: Nested Pydantic `$defs` were removed from the `update_plan` tool schema, allowing the Groq API parser to successfully validate the tool definitions without throwing `invalid_request_error`.
+2. **Single-Call Architecture & Outcome-Focused Prompting**: `run_turn` was refactored to use a single LLM call. The strict `json_mode` requirement and prescriptive tool syntax were removed from the prompts in favor of outcome-based guidelines. The prompt was also updated to explicitly enforce native JSON tool use.
+3. **Phase-Gated Tool Visibility & Fail-Fast Error Handling**: A `_get_tools_for_phase` function was added to limit the agent's available tools depending on the active phase. Error handling was improved to ensure tool execution failures surface instead of silently failing. We also fixed a payload merging bug where `update_plan` dropped state due to Pydantic dropping unset fields (e.g., `budget_range`).
+
+**Verification:**
+The agent loop was successfully verified via manual UI testing. The agent can successfully build profiles, suggest destinations, add them to the shortlist, and update the UI accordingly.
+
+**Observation & Next Steps:**
+During testing, we observed that the agent now performs worse at actively directing the conversation than it did previously. Its conversational responses are occasionally reduced to simple acknowledgments (e.g., "I have updated the plan accordingly" or "I've added that to the plan") rather than meaningfully guiding the user through the funnel. 
+
+This appears to be a side-effect of responding to user input while executing tool calls in the new single-call architecture. The Product Manager (PM) plans to manually adapt the prompt to address this regression and improve the agent's consultative direction.

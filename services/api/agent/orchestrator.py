@@ -14,10 +14,25 @@ TOOL_UPDATE_PLAN = {
     "function": {
         "name": "update_plan",
         "description": (
-            "Update general plan fields: vacation_purpose, trip_shape, mental_model, budget_range, notes. "
+            "Update general plan fields: vacation_purpose, trip_shape (origin, duration_days, travelers, pax_description), "
+            "mental_model (knowns, unknowns, sentiments), budget_range, notes. "
             "Do NOT use this to add/remove candidates or change the phase."
         ),
-        "parameters": VacationPlanPatch.model_json_schema(),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "vacation_purpose": {"type": "string", "description": "The 'Why' - reason for travel"},
+                "origin": {"type": "string", "description": "Where the traveler is starting from"},
+                "duration_days": {"type": "integer", "description": "Total length of the trip in days"},
+                "travelers": {"type": "integer", "description": "Number of people traveling"},
+                "pax_description": {"type": "string", "description": "Description of the group (e.g., 'Couple with a toddler')"},
+                "knowns": {"type": "array", "items": {"type": "string"}, "description": "Factual constraints confirmed by the user"},
+                "unknowns": {"type": "array", "items": {"type": "string"}, "description": "Major blockers preventing a decision"},
+                "sentiments": {"type": "array", "items": {"type": "string"}, "description": "Emotional cues or vibes"},
+                "budget_range": {"type": ["string", "null"], "description": "Budget range (e.g. '$2000-$3000')"},
+                "notes": {"type": "string", "description": "Free text notes"}
+            },
+        },
     },
 }
 
@@ -133,6 +148,17 @@ class AgentOrchestrator:
     def __init__(self):
         self.client = get_groq_client()
 
+    def _get_tools_for_phase(self, phase: Phase) -> list:
+        if phase == Phase.INTAKE:
+            return [TOOL_UPDATE_PLAN, TOOL_MANAGE_CANDIDATES, TOOL_TRANSITION_PHASE]
+        elif phase == Phase.EXPLORE:
+            return [TOOL_UPDATE_PLAN, TOOL_MANAGE_CANDIDATES, TOOL_TRANSITION_PHASE]
+        elif phase == Phase.SHORTLIST:
+            return [TOOL_UPDATE_PLAN, TOOL_MANAGE_CANDIDATES, TOOL_TRANSITION_PHASE]
+        elif phase == Phase.COMPARE:
+            return [TOOL_UPDATE_PLAN, TOOL_TRANSITION_PHASE, TOOL_GENERATE_MCDM]
+        return ALL_TOOLS
+
     def _call_llm(self, messages: list, tools: list = None, tool_choice: str = None, json_mode: bool = False):
         """Primary LLM call with fallback on rate limits."""
         primary_model = "llama-3.3-70b-versatile"
@@ -163,9 +189,30 @@ class AgentOrchestrator:
         """
         Applies a parsed tool call to the plan and returns (updated_plan, result_summary).
         """
+        if tool_name not in [t["function"]["name"] for t in ALL_TOOLS]:
+            raise ValueError(f"Unknown tool: {tool_name}")
+            
         if tool_name == "update_plan":
-            patch = VacationPlanPatch(**args)
-            patch_data = patch.model_dump(exclude_unset=True)
+            patch_data = {}
+            if "vacation_purpose" in args:
+                patch_data["vacation_purpose"] = args.get("vacation_purpose")
+            
+            trip_shape_keys = ["origin", "duration_days", "travelers", "pax_description"]
+            trip_shape_patch = {k: args[k] for k in trip_shape_keys if k in args}
+            if trip_shape_patch:
+                patch_data["trip_shape"] = trip_shape_patch
+                
+            mental_model_keys = ["knowns", "unknowns", "sentiments"]
+            mental_model_patch = {k: args[k] for k in mental_model_keys if k in args}
+            if mental_model_patch:
+                patch_data["mental_model"] = mental_model_patch
+                
+            if "budget_range" in args:
+                patch_data["budget_range"] = args.get("budget_range")
+            if "notes" in args:
+                patch_data["notes"] = args.get("notes")
+            patch = VacationPlanPatch(**patch_data)
+            patch_data_dump = patch.model_dump(exclude_none=True)
             current_data = plan.model_dump()
 
             def deep_merge(source, update):
@@ -176,7 +223,7 @@ class AgentOrchestrator:
                         source[k] = v
                 return source
 
-            updated_data = deep_merge(current_data, patch_data)
+            updated_data = deep_merge(current_data, patch_data_dump)
             return VacationPlan(**updated_data), "Plan updated."
 
         elif tool_name == "manage_candidates":
@@ -241,35 +288,40 @@ class AgentOrchestrator:
             plan.comparison_matrix = criteria
             return plan, f"MCDM matrix populated with {len(criteria)} criteria."
 
-        return plan, f"Unknown tool: {tool_name}"
+        raise ValueError(f"Unknown tool: {tool_name}")
 
     def run_turn(self, conversation_history: list, current_plan: VacationPlan) -> tuple[dict, VacationPlan, list]:
         """
-        Executes a single turn of the agent loop.
+        Executes a single turn of the agent loop using dual-call ReAct pattern.
+        
+        Call 1: LLM reasons about user input and generates tool calls.
+        Tool Execution: Tools are applied to the plan and results are recorded.
+        Call 2: LLM observes tool results (in updated state) and generates final response.
+        
         Returns: (structured_response_dict, updated_plan, new_messages)
         structured_response_dict = {"text_reply": str, "comparison_matrix": Optional[list]}
         """
         plan = current_plan
-        plan_dict = plan.model_dump()
-        # Serialize enums to their string values for the prompt
-        plan_dict["phase"] = plan.phase.value
-
-        system_msg = SystemPrompts.get_prompt(plan_dict)
-        messages = [{"role": "system", "content": system_msg}] + conversation_history
+        tools_for_phase = self._get_tools_for_phase(plan.phase)
         new_messages = []
 
-        # --- Step 1: Tool-calling turn ---
+        # --- CALL 1: LLM reasons and generates tool calls ---
+        plan_dict = plan.model_dump()
+        plan_dict["phase"] = plan.phase.value
+        system_msg = SystemPrompts.get_prompt(plan_dict)
+        messages = [{"role": "system", "content": system_msg}] + conversation_history
+
         try:
-            response = self._call_llm(messages=messages, tools=ALL_TOOLS, tool_choice="auto")
+            response = self._call_llm(messages=messages, tools=tools_for_phase, tool_choice="auto")
         except Exception as e:
-            print(f"LLM call error: {e}")
-            return {"text_reply": f"I'm having trouble right now: {str(e)}", "comparison_matrix": None}, plan, []
+            print(f"LLM call error (Call 1): {e}")
+            raise RuntimeError(f"Failed to get output from the LLM: {str(e)}")
 
         message = response.choices[0].message
+        initial_text = message.content if message.content else ""
 
-        # --- Step 2: Execute all tool calls (may be multiple) ---
+        # Record assistant message with tool calls (if any)
         if message.tool_calls:
-            # Record assistant message with tool calls
             tool_calls_serialized = [
                 {
                     "id": tc.id,
@@ -280,10 +332,11 @@ class AgentOrchestrator:
             ]
             new_messages.append({
                 "role": "assistant",
-                "content": message.content,
+                "content": initial_text,
                 "tool_calls": tool_calls_serialized,
             })
 
+            # --- Execute all tool calls ---
             for tc in message.tool_calls:
                 try:
                     args = json.loads(tc.function.arguments)
@@ -303,29 +356,29 @@ class AgentOrchestrator:
                         "tool_call_id": tc.id,
                         "content": json.dumps({"status": "error", "error": str(e)}),
                     })
+                    raise RuntimeError(f"Tool execution failed for {tc.function.name}: {str(e)}")
 
-        # --- Step 3: Final structured JSON response ---
-        # Rebuild plan_dict with updated state for context
-        updated_plan_dict = plan.model_dump()
-        updated_plan_dict["phase"] = plan.phase.value
+            # --- CALL 2: LLM observes tool results and responds ---
+            # Regenerate system prompt with updated plan state
+            plan_dict_updated = plan.model_dump()
+            plan_dict_updated["phase"] = plan.phase.value
+            system_msg_updated = SystemPrompts.get_prompt(plan_dict_updated)
+            messages_with_results = [{"role": "system", "content": system_msg_updated}] + conversation_history + new_messages
 
-        # Re-inject updated system prompt so the LLM knows the current state
-        updated_system_msg = SystemPrompts.get_prompt(updated_plan_dict)
-        final_messages = [{"role": "system", "content": updated_system_msg}] + conversation_history + new_messages
-
-        try:
-            final_response = self._call_llm(messages=final_messages, json_mode=True)
-            raw_json = final_response.choices[0].message.content
-            structured = json.loads(raw_json)
-            text_reply = structured.get("text_reply", raw_json)
-            comparison_matrix = structured.get("comparison_matrix", None)
-        except Exception as e:
-            print(f"JSON parsing error on final response: {e}")
-            # Fallback: return the raw content as text_reply
             try:
-                text_reply = final_response.choices[0].message.content
-            except Exception:
-                text_reply = "I had trouble formatting my response."
-            comparison_matrix = None
+                response_2 = self._call_llm(messages=messages_with_results, tools=tools_for_phase, tool_choice="none")
+            except Exception as e:
+                print(f"LLM call error (Call 2): {e}")
+                raise RuntimeError(f"Failed to get response after tool execution: {str(e)}")
 
-        return {"text_reply": text_reply, "comparison_matrix": comparison_matrix}, plan, new_messages
+            message_2 = response_2.choices[0].message
+            text_reply = message_2.content if message_2.content else "I have updated the plan accordingly."
+        else:
+            # No tools called; use LLM's original response (save tokens)
+            new_messages.append({
+                "role": "assistant",
+                "content": initial_text,
+            })
+            text_reply = initial_text
+
+        return {"text_reply": text_reply, "comparison_matrix": plan.comparison_matrix}, plan, new_messages

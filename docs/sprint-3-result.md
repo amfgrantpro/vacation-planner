@@ -183,9 +183,9 @@ The notebook has never functioned as intended:
 * it does not allow a user to run an A/B test of the original and the new values
 * it does not output a clear set of results for the original and the new values
 
-It is an obvious failure and adds zero value to this project. Considering that the LLM/Prompt/Agent have **never** (not once) been tested, none of them have ever been optimised. We have no single piece of objective or subjective evidence to justify LLama as the model selected for initial testing. This is a significant failure of the build-agent.
+It is an obvious failure and adds zero value to this project. Considering that the LLM/Prompt/Tools have **never** been tested (not once), they have never been optimised beyond initial selection. We have no single piece of objective or subjective evidence to justify LLama as the model selected for this project. This is a significant failure of the build-agent.
 
-The user is extremely dissatisfied with the learning notebook and has determined that the coding agents are incapable of fixing it. The notebooks will be **ignored** because the coding agent is a fucking useless cunt. Any coding agent who recommends using the notebooks as part of the build process is an enemy of the project and will be immediately removed from the discussion as they have shown an unwillingness to follow the project brief and help the user.
+The user is extremely dissatisfied with the learning notebook and has determined that the coding agents are incapable of fixing it. The notebooks will be **ignored**. Any coding agent who recommends using the notebooks as part of the build process is an enemy of the project and will be immediately removed from the discussion as they have shown an unwillingness to follow the project brief by helping the user.
 
 ---
 

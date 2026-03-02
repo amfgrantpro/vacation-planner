@@ -42,7 +42,14 @@ async def chat(request: ChatRequest):
         session = session_manager.get_session(request.session_id)
         session.history.append({"role": "user", "content": request.message})
 
-        structured, updated_plan, new_messages = agent.run_turn(session.history, session.plan)
+        try:
+            structured, updated_plan, new_messages = agent.run_turn(session.history, session.plan)
+        except Exception as e:
+            # If the orchestrator fails (e.g., tool execution error, rate limit, etc.)
+            print(f"Agent orchestrator failed: {e}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=str(e))
 
         session.plan = updated_plan
 
@@ -61,7 +68,9 @@ async def chat(request: ChatRequest):
             comparison_matrix=comparison_matrix,
         )
 
-    except Exception as e:
+    except HTTPException:
+        # Re-raise HTTP exceptions so FastAPI can handle them natively
+        raise
         print(f"Error in chat endpoint: {e}")
         import traceback
         traceback.print_exc()
