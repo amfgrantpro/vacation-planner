@@ -1,3 +1,89 @@
+/* ─── Google Fonts — must precede all other statements ─────────────── */
+@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ─── Design tokens ────────────────────────────────────────────────── */
+:root {
+  --radius: 0.875rem;
+
+  /* Vacation palette — oklch for perceptual uniformity */
+  --cream:      oklch(0.985 0.012 85);
+  --sand:       oklch(0.93  0.045 85);
+  --sand-deep:  oklch(0.82  0.09  80);
+  --sun:        oklch(0.84  0.14  78);
+  --ocean:      oklch(0.62  0.12  230);
+  --ocean-deep: oklch(0.42  0.11  235);
+  --teal:       oklch(0.66  0.09  200);
+  --teal-soft:  oklch(0.93  0.035 200);
+  --sage:       oklch(0.78  0.06  155);
+  --coral:      oklch(0.7   0.16  35);
+  --ink:        oklch(0.22  0.025 240);
+
+  /* Semantic tokens */
+  --background: oklch(0.99 0.006 85);
+  --foreground: var(--ink);
+  --card:       oklch(1 0 0);
+  --card-foreground: var(--ink);
+  --border:     oklch(0.9 0.018 80);
+  --input:      oklch(0.9 0.018 80);
+  --muted:      oklch(0.96 0.012 80);
+  --muted-foreground: oklch(0.5 0.025 240);
+  --primary:         var(--ocean-deep);
+  --primary-foreground: oklch(0.99 0.006 85);
+  --secondary:       var(--teal-soft);
+  --secondary-foreground: var(--ocean-deep);
+
+  /* Shadows */
+  --shadow-card: 0 1px 2px oklch(0.4 0.05 240 / 0.04), 0 8px 24px oklch(0.4 0.08 240 / 0.06);
+  --shadow-soft: 0 1px 2px oklch(0.4 0.05 240 / 0.05), 0 12px 32px oklch(0.4 0.08 240 / 0.08);
+}
+
+/* ─── Base layer ───────────────────────────────────────────────────── */
+@layer base {
+  *, *::before, *::after {
+    border-color: var(--border);
+    box-sizing: border-box;
+  }
+
+  html, body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: "Inter", system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: "Fraunces", ui-serif, Georgia, serif;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* ─── Utility classes (supplement Tailwind tokens) ─────────────────── */
+@layer utilities {
+  .font-serif {
+    font-family: "Fraunces", ui-serif, Georgia, serif;
+  }
+  .font-display {
+    font-family: "Fraunces", ui-serif, Georgia, serif;
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  .bg-background { background-color: var(--background); }
+  .text-foreground { color: var(--foreground); }
+  .bg-card { background-color: var(--card); }
+  .bg-cream { background-color: var(--cream); }
+  .bg-sand { background-color: var(--sand); }
+  .bg-teal-soft { background-color: var(--teal-soft); }
+  .text-ocean-deep { color: var(--ocean-deep); }
+  .text-ink { color: var(--ink); }
+  .bg-ocean-deep { background-color: var(--ocean-deep); }
+  .border-border { border-color: var(--border); }
+}
