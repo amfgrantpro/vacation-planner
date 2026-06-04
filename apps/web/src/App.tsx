@@ -94,38 +94,19 @@ function App() {
   const currentPlan = plan || defaultPlan;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="bg-card/95 backdrop-blur-sm border-b border-border px-6 py-3.5 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-3">
-          <h1 className="font-serif text-2xl font-bold text-ink tracking-tight">Where to?</h1>
-          <span className="hidden sm:inline-block text-xs text-muted-foreground border border-border rounded-full px-2.5 py-0.5">
-            AI vacation planner
-          </span>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span
-            className={`inline-block w-1.5 h-1.5 rounded-full ${
-              isLoading ? 'bg-ocean animate-pulse' : 'bg-sage'
-            }`}
-          />
-          {isLoading ? 'Thinking…' : 'Ready'}
-        </div>
-      </header>
+    <div className="flex h-screen w-screen overflow-hidden bg-background">
+      {/* Left panel: Chat (35%) */}
+      <section className="w-[35%] min-w-[420px] max-w-[520px] shrink-0 h-full">
+        <ChatInterface
+          messages={messages}
+          onSendMessage={sendMessage}
+          isLoading={isLoading}
+        />
+      </section>
 
-      {/* Main content — 35% chat / 65% living document */}
-      <main className="flex-1 w-full max-w-[1400px] mx-auto px-6 py-6 gap-6 flex h-[calc(100vh-120px)] overflow-hidden">
-        {/* Left panel: Chat (35%) */}
-        <section className="w-[35%] min-w-[320px] shrink-0">
-          <ChatInterface
-            messages={messages}
-            onSendMessage={sendMessage}
-            isLoading={isLoading}
-          />
-        </section>
-
-        {/* Right panel: Living Document (65%) */}
-        <section className="flex-1 flex flex-col gap-6 min-w-0 overflow-y-auto pr-2">
+      {/* Right panel: Living Document (65%) */}
+      <main className="flex-1 h-full overflow-y-auto bg-background">
+        <div className="mx-auto max-w-[1180px] px-10 py-10 space-y-8">
           {/* Trip Profile - always visible */}
           <TripProfileComponent profile={currentPlan.trip_profile} />
 
@@ -146,7 +127,7 @@ function App() {
             onBackToShortlist={handleBackToShortlist}
             canCompare={canCompare}
           />
-        </section>
+        </div>
       </main>
     </div>
   );

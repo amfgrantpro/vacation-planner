@@ -36,7 +36,7 @@ TOOL_SUGGEST_CANDIDATES = {
     "type": "function",
     "function": {
         "name": "suggest_candidates",
-        "description": "Suggest exactly three destination candidates for the user to explore based on their profile.",
+        "description": "Suggest EXACTLY three destination candidates for the user to explore. Choose the BEST three candidates based on the user's trip profile.",
         "parameters": {
             "type": "object",
             "properties": {

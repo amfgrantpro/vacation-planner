@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { ArrowRight, Lightbulb, MapPin } from 'lucide-react';
+import { Sparkles, MapPin, Lightbulb, ChevronDown, Compass } from 'lucide-react';
+import { Logo } from './Logo';
+import { TripProfileComponent } from './TripProfileComponent';
+import type { TripProfile } from '../types';
 
 interface LandingScreenProps {
   onStartSession: (path: 'inspire' | 'destinations') => void;
@@ -39,182 +42,221 @@ export function LandingScreen({ onStartSession }: LandingScreenProps) {
     onStartSession(path);
   };
 
+  const currentProfile: TripProfile = {
+    origin: origin || null,
+    travelers: travelers,
+    when: when !== 'whenever' ? when : null,
+    duration: duration !== 'however long' ? duration : null,
+    budget: budget !== 'not important for now' ? budget : null,
+    vacation_type: vacationType !== 'anything' ? vacationType : null,
+    likes: [],
+    avoid: [],
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cream via-white to-teal-soft/30 flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl grid md:grid-cols-2 gap-12 items-center">
-        {/* Left side: Entry point */}
-        <div>
-          <div className="mb-8">
-            <h1 className="font-serif text-5xl font-bold tracking-tight text-gray-900 mb-3">
-              Where to?
-            </h1>
-            <p className="text-lg text-gray-600">
-              We help you decide where to go next.
-            </p>
+    <main className="min-h-screen w-full bg-background flex flex-col">
+      <header className="flex items-center justify-between px-10 pt-8 shrink-0">
+        <Logo size="lg" />
+      </header>
+
+      <div className="mx-auto grid max-w-[1320px] grid-cols-1 md:grid-cols-2 gap-14 px-10 pt-16 flex-1 items-start">
+        {/* LEFT COLUMN */}
+        <section className="flex flex-col items-start">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-sun-badge px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-[oklch(0.4_0.12_70)] animate-fade-in">
+            <Sparkles className="size-3" /> A new way to plan
           </div>
 
-          <div className="bg-white rounded-3xl border border-border/70 p-8 shadow-card space-y-6">
-            {/* Sentence builder */}
-            <div className="space-y-4">
-              <p className="text-sm font-medium text-gray-700">Build your trip brief</p>
+          <h1 className="mt-5 font-serif text-[88px] font-semibold leading-[0.95] tracking-[-0.04em] text-foreground">
+            Where to<span className="text-coral">?</span>
+          </h1>
 
-              {/* Travelers */}
-              <div className="flex gap-2 items-center flex-wrap">
-                <span className="text-gray-700">I'm</span>
+          <p className="mt-5 max-w-[460px] text-[15.5px] leading-relaxed text-muted-foreground">
+            A simple, conversational way to choose your next trip.
+          </p>
+
+          {/* Primary sentence builder */}
+          <div className="mt-10 space-y-3 font-serif text-[18px] leading-[2.3] text-foreground w-full">
+            <div>
+              <span>I want to plan a trip for</span>
+              <div className="relative inline-block mx-1">
                 <select
                   value={travelers}
                   onChange={(e) => setTravelers(e.target.value)}
-                  className="px-3 py-2 rounded-full border border-teal-soft bg-teal-soft text-ocean-deep text-sm font-medium focus:outline-none"
+                  className="appearance-none cursor-pointer rounded-full pl-3 pr-7 py-0.5 font-serif text-[18px] font-medium transition focus:outline-none bg-teal-soft text-ocean-deep ring-1 ring-ocean-ring hover:bg-teal-soft-hover"
                 >
-                  <option>solo traveller</option>
-                  <option>a couple</option>
-                  <option>a family</option>
-                  <option>a group of friends</option>
+                  <option value="solo traveller">solo traveller</option>
+                  <option value="a couple">a couple</option>
+                  <option value="a family">a family</option>
+                  <option value="a group of friends">a group of friends</option>
                 </select>
+                <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 size-3.5 opacity-60 pointer-events-none text-ocean-deep" />
               </div>
+            </div>
 
-              {/* Origin */}
-              <div className="flex gap-2 items-center flex-wrap">
-                <span className="text-gray-700">travelling from</span>
-                <input
-                  type="text"
-                  value={origin}
-                  onChange={(e) => setOrigin(e.target.value)}
-                  className="px-3 py-2 rounded-full border border-teal-soft bg-teal-soft text-ocean-deep text-sm font-medium focus:outline-none"
-                />
-              </div>
+            <div>
+              <span>travelling from</span>
+              <input
+                type="text"
+                value={origin}
+                onChange={(e) => setOrigin(e.target.value)}
+                className={`mx-1 inline-block align-baseline rounded-full px-3 py-0.5 font-serif text-[18px] font-medium transition focus:outline-none w-28 text-center ${
+                  origin.trim()
+                    ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean-ring'
+                    : 'border border-border bg-card text-foreground hover:bg-cream'
+                }`}
+              />
+            </div>
 
-              {/* When */}
-              <div className="flex gap-2 items-center flex-wrap">
-                <span className="text-gray-700">in</span>
+            <div className="flex flex-wrap items-center gap-y-2">
+              <span>I want to travel in</span>
+              <div className="relative inline-block mx-1">
                 <select
                   value={when}
                   onChange={(e) => setWhen(e.target.value)}
-                  className="px-3 py-2 rounded-full border border-teal-soft bg-teal-soft text-ocean-deep text-sm font-medium focus:outline-none"
+                  className={`appearance-none cursor-pointer rounded-full pl-3 pr-7 py-0.5 font-serif text-[18px] font-medium transition focus:outline-none ${
+                    when !== 'whenever'
+                      ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean-ring'
+                      : 'border border-border bg-card text-foreground hover:bg-cream'
+                  }`}
                 >
-                  <option>whenever</option>
-                  <option>January</option>
-                  <option>February</option>
-                  <option>March</option>
-                  <option>April</option>
-                  <option>May</option>
-                  <option>June</option>
-                  <option>July</option>
-                  <option>August</option>
-                  <option>September</option>
-                  <option>October</option>
-                  <option>November</option>
-                  <option>December</option>
-                  <option>flexible</option>
+                  <option value="whenever">whenever</option>
+                  <option value="January">January</option>
+                  <option value="February">February</option>
+                  <option value="March">March</option>
+                  <option value="April">April</option>
+                  <option value="May">May</option>
+                  <option value="June">June</option>
+                  <option value="July">July</option>
+                  <option value="August">August</option>
+                  <option value="September">September</option>
+                  <option value="October">October</option>
+                  <option value="November">November</option>
+                  <option value="December">December</option>
+                  <option value="flexible">flexible</option>
                 </select>
+                <ChevronDown className={`absolute right-2 top-1/2 -translate-y-1/2 size-3.5 opacity-60 pointer-events-none ${when !== 'whenever' ? 'text-ocean-deep' : 'text-foreground'}`} />
               </div>
-
-              {/* Duration */}
-              <div className="flex gap-2 items-center flex-wrap">
-                <span className="text-gray-700">for</span>
+              <span>for</span>
+              <div className="relative inline-block mx-1">
                 <select
                   value={duration}
                   onChange={(e) => setDuration(e.target.value)}
-                  className="px-3 py-2 rounded-full border border-teal-soft bg-teal-soft text-ocean-deep text-sm font-medium focus:outline-none"
+                  className={`appearance-none cursor-pointer rounded-full pl-3 pr-7 py-0.5 font-serif text-[18px] font-medium transition focus:outline-none ${
+                    duration !== 'however long'
+                      ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean-ring'
+                      : 'border border-border bg-card text-foreground hover:bg-cream'
+                  }`}
                 >
-                  <option>however long</option>
-                  <option>a few days</option>
-                  <option>a week</option>
-                  <option>2 weeks</option>
-                  <option>flexible</option>
+                  <option value="however long">however long</option>
+                  <option value="a few days">a few days</option>
+                  <option value="a week">a week</option>
+                  <option value="2 weeks">2 weeks</option>
+                  <option value="flexible">flexible</option>
                 </select>
+                <ChevronDown className={`absolute right-2 top-1/2 -translate-y-1/2 size-3.5 opacity-60 pointer-events-none ${duration !== 'however long' ? 'text-ocean-deep' : 'text-foreground'}`} />
               </div>
             </div>
+          </div>
 
-            {/* CTAs */}
-            <div className="flex gap-3">
-              <button
-                onClick={() => handleStartSession('inspire')}
-                className="flex-1 bg-ocean-deep text-white rounded-full py-3 font-medium text-sm hover:bg-ocean-deep/90 transition flex items-center justify-center gap-2"
-              >
-                <Lightbulb className="size-4" /> Inspire me where to go
-              </button>
-              <button
-                onClick={() => handleStartSession('destinations')}
-                className="flex-1 border border-ocean-deep text-ocean-deep rounded-full py-3 font-medium text-sm hover:bg-cream transition flex items-center justify-center gap-2"
-              >
-                <MapPin className="size-4" /> I already have destinations
-              </button>
+          {/* Submit chips */}
+          <div className="mt-6 flex flex-wrap gap-3">
+            <button
+              onClick={() => handleStartSession('destinations')}
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-ocean-deep-border bg-cream px-5 font-sans text-[14px] font-medium text-ocean-deep transition hover:bg-ocean-deep hover:text-primary-foreground shadow-sm"
+            >
+              <MapPin className="size-4" /> I already have destinations in mind
+            </button>
+            <button
+              onClick={() => handleStartSession('inspire')}
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-ocean-deep-border bg-cream px-5 font-sans text-[14px] font-medium text-ocean-deep transition hover:bg-ocean-deep hover:text-primary-foreground shadow-sm"
+            >
+              <Lightbulb className="size-4" /> Inspire me where to go
+            </button>
+          </div>
+
+          {/* Optional sentence builder */}
+          <div className="mt-12 border-t border-dashed border-border pt-6 w-full">
+            <div className="text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+              optional · add more if you like
             </div>
-
-            {/* Optional section */}
-            <div className="border-t pt-6">
-              <p className="text-xs font-medium text-gray-500 mb-4">OPTIONAL · ADD MORE IF YOU LIKE</p>
-
-              <div className="space-y-4">
-                {/* Vacation type */}
-                <div className="flex gap-2 items-center flex-wrap">
-                  <span className="text-gray-700 text-sm">We're looking for</span>
+            <div className="mt-3 space-y-2 font-serif text-[17px] leading-[2.2] text-muted-foreground w-full animate-fade-in">
+              <div className="flex flex-wrap items-center gap-y-1">
+                <span>We're looking for</span>
+                <div className="relative inline-block mx-1">
                   <select
                     value={vacationType}
                     onChange={(e) => setVacationType(e.target.value)}
-                    className="px-3 py-2 rounded-full border border-teal-soft bg-teal-soft text-ocean-deep text-sm font-medium focus:outline-none"
+                    className={`appearance-none cursor-pointer rounded-full pl-3 pr-7 py-0.5 font-serif text-[17px] font-medium transition focus:outline-none ${
+                      vacationType !== 'anything'
+                        ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean-ring'
+                        : 'border border-border bg-card text-muted-foreground hover:bg-cream'
+                    }`}
                   >
-                    <option>anything</option>
-                    <option>beach & relaxation</option>
-                    <option>hiking & outdoors</option>
-                    <option>city & culture</option>
-                    <option>roadtripping</option>
-                    <option>good food & drink</option>
+                    <option value="anything">anything</option>
+                    <option value="beach & relaxation">beach & relaxation</option>
+                    <option value="hiking & outdoors">hiking & outdoors</option>
+                    <option value="city & culture">city & culture</option>
+                    <option value="roadtripping">roadtripping</option>
+                    <option value="good food & drink">good food & drink</option>
                   </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 size-3.5 opacity-60 pointer-events-none" />
                 </div>
+              </div>
 
-                {/* Budget */}
-                <div className="flex gap-2 items-center flex-wrap">
-                  <span className="text-gray-700 text-sm">The budget is</span>
+              <div className="flex flex-wrap items-center gap-y-1">
+                <span>The budget is</span>
+                <div className="relative inline-block mx-1">
                   <select
                     value={budget}
                     onChange={(e) => setBudget(e.target.value)}
-                    className="px-3 py-2 rounded-full border border-teal-soft bg-teal-soft text-ocean-deep text-sm font-medium focus:outline-none"
+                    className={`appearance-none cursor-pointer rounded-full pl-3 pr-7 py-0.5 font-serif text-[17px] font-medium transition focus:outline-none ${
+                      budget !== 'not important for now'
+                        ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean-ring'
+                        : 'border border-border bg-card text-muted-foreground hover:bg-cream'
+                    }`}
                   >
-                    <option>not important for now</option>
-                    <option>on the cheap</option>
-                    <option>mid-range</option>
-                    <option>let's get fancy</option>
+                    <option value="not important for now">not important for now</option>
+                    <option value="on the cheap">on the cheap</option>
+                    <option value="mid-range">mid-range</option>
+                    <option value="let's get fancy">let's get fancy</option>
                   </select>
+                  <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 size-3.5 opacity-60 pointer-events-none" />
                 </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Right side: Preview of trip profile + candidate area (empty state) */}
-        <div className="hidden md:flex flex-col gap-6">
-          <div className="bg-white/50 backdrop-blur-sm rounded-2xl border border-border/70 p-6 shadow-card">
-            <h3 className="font-serif text-base font-semibold mb-4">Trip profile</h3>
-            <div className="space-y-3">
-              {[
-                { label: 'Origin', value: 'not set' },
-                { label: 'Travelers', value: 'not set' },
-                { label: 'When', value: 'not set' },
-                { label: 'Duration', value: 'not set' },
-              ].map((field) => (
-                <div key={field.label} className="text-sm">
-                  <span className="text-gray-500">{field.label}</span>
-                  <span className="text-gray-300"> · {field.value}</span>
-                </div>
+        {/* RIGHT COLUMN */}
+        <section className="space-y-4 w-full">
+          <TripProfileComponent profile={currentProfile} />
+
+          <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-card-wash p-10 text-center shadow-sm">
+            <div className="flex size-14 items-center justify-center rounded-full bg-teal-soft text-ocean-deep">
+              <Compass className="size-6 text-ocean-deep" />
+            </div>
+            <div className="max-w-[340px]">
+              <div className="font-serif text-[17px] font-semibold tracking-tight text-foreground">
+                Your top options will appear here as we explore.
+              </div>
+              <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+                Tell us a little about what you like to do, and we'll build a
+                personalised shortlist together — right here, as we talk.
+              </p>
+            </div>
+            <div className="mt-2 grid w-full max-w-[420px] grid-cols-3 gap-2">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="aspect-[3/4] rounded-xl border border-dashed border-border bg-muted-soft"
+                />
               ))}
             </div>
           </div>
-
-          <div className="bg-white/50 backdrop-blur-sm rounded-2xl border border-border/70 p-6 shadow-card">
-            <h3 className="font-serif text-base font-semibold mb-4">Your top options</h3>
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-16 bg-gray-100 rounded-lg border border-dashed border-gray-300" />
-              ))}
-            </div>
-            <p className="text-xs text-gray-400 text-center mt-4">
-              Your top options will appear here
-            </p>
-          </div>
-        </div>
+        </section>
       </div>
-    </div>
+
+      <div className="h-32 shrink-0" />
+    </main>
   );
 }

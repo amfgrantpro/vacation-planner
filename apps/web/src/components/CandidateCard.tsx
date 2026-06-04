@@ -20,63 +20,59 @@ export function CandidateCard({
   onAddToShortlist,
 }: CandidateCardProps) {
   return (
-    <div className="group rounded-3xl border border-border bg-card shadow-card overflow-hidden hover:shadow-soft transition-shadow duration-300">
-      {/* Photo */}
-      <div className="relative h-44 overflow-hidden">
+    <article className="group flex flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-card transition hover:shadow-soft duration-300">
+      <div className="relative h-48 overflow-hidden">
         <img
           src={candidate.photo_url || GENERIC_FALLBACK_URL}
           alt={candidate.name}
           onError={(e) => {
             e.currentTarget.src = GENERIC_FALLBACK_URL;
           }}
-          className="size-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className="size-full object-cover transition duration-500 group-hover:scale-[1.03]"
         />
-        {/* Region badge */}
-        <div className="absolute top-3 left-3 rounded-full bg-cream/90 backdrop-blur-sm px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-ocean-deep">
+        <div className="absolute left-3 top-3 rounded-full bg-cream-overlay px-2.5 py-1 text-[10.5px] font-medium uppercase tracking-[0.12em] text-ocean-deep backdrop-blur">
           {candidate.region}
         </div>
-        {/* Shortlisted indicator */}
         {isInShortlist && (
-          <div className="absolute top-3 right-3 rounded-full bg-ocean-deep px-2.5 py-1 text-xs font-semibold text-white">
+          <div className="absolute right-3 top-3 rounded-full bg-ocean-deep px-2.5 py-1 text-[10.5px] font-semibold text-white shadow-sm">
             ✓ Shortlisted
           </div>
         )}
       </div>
 
-      {/* Content */}
-      <div className="p-5 space-y-3">
+      <div className="flex flex-1 flex-col gap-3 p-5">
         <div>
-          <h4 className="font-serif text-xl font-semibold text-ink leading-tight">{candidate.name}</h4>
+          <h4 className="font-serif text-xl font-semibold tracking-tight text-foreground">{candidate.name}</h4>
+          <div className="mt-0.5 text-[12px] text-muted-foreground">{candidate.region}</div>
         </div>
 
-        {/* Vibe box */}
-        <div className="rounded-xl bg-teal-soft px-3 py-2.5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-ocean-deep mb-1">
+        <div className="rounded-xl bg-teal-soft px-3.5 py-3">
+          <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-ocean-deep/80">
             Destination vibe
+          </div>
+          <p className="mt-1 font-sans text-[13.5px] leading-relaxed text-foreground/85">
+            {candidate.vibe}
           </p>
-          <p className="text-sm text-ink leading-snug">{candidate.vibe}</p>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-2 pt-1">
+        <div className="mt-2 grid grid-cols-2 gap-2">
           <button
             id={`tell-more-${candidate.name.toLowerCase().replace(/\s+/g, '-')}`}
             onClick={onTellMeMore}
-            className="flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl border border-border bg-card text-xs font-medium text-ink hover:bg-cream transition-colors"
+            className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card font-sans text-[12.5px] font-medium text-foreground transition hover:bg-cream"
           >
-            <MessageCircle className="size-3.5" />
-            Tell me more
+            <MessageCircle className="size-3.5" /> Tell me more
           </button>
           <button
             id={`shortlist-${candidate.name.toLowerCase().replace(/\s+/g, '-')}`}
             onClick={onAddToShortlist}
             disabled={shortlistFull && !isInShortlist}
-            className={`flex-1 h-9 flex items-center justify-center gap-1.5 rounded-xl text-xs font-medium transition-colors ${
+            className={`inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border font-sans text-[12.5px] font-medium transition ${
               isInShortlist
-                ? 'bg-ocean-deep text-white'
+                ? 'bg-ocean-deep border-ocean-deep text-white hover:bg-ocean-deep-dim shadow-card'
                 : shortlistFull
-                  ? 'border border-border bg-muted text-muted-foreground cursor-not-allowed'
-                  : 'border border-ocean/30 bg-cream text-ocean-deep hover:bg-ocean-deep hover:text-white'
+                  ? 'border-border bg-muted text-muted-foreground/60 cursor-not-allowed'
+                  : 'border-ocean-deep-border bg-cream text-ocean-deep hover:bg-ocean-deep hover:text-white'
             }`}
           >
             <Plus className="size-3.5" />
@@ -84,6 +80,6 @@ export function CandidateCard({
           </button>
         </div>
       </div>
-    </div>
+    </article>
   );
 }

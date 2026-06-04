@@ -1,4 +1,4 @@
-import { Plus, X, MessageCircle, ArrowLeft } from 'lucide-react';
+import { X, ArrowLeft, Check } from 'lucide-react';
 import type { DestinationCandidate, Mode } from '../types';
 import { CandidateCard } from './CandidateCard';
 import { ShortlistCard } from './ShortlistCard';
@@ -47,13 +47,15 @@ export function CandidateArea({
   /* ── EXPLORE ───────────────────────────────────────────────────────── */
   if (mode === 'explore') {
     return (
-      <div className="space-y-5">
+      <div className="space-y-8">
         {/* Heading */}
-        <div>
-          <h2 className="font-serif text-2xl font-bold text-ink">Destinations to consider</h2>
-          <p className="text-xs font-semibold text-muted-foreground mt-1 tracking-wide uppercase">
+        <div className="flex items-baseline justify-between">
+          <h2 className="font-serif text-2xl font-semibold tracking-tight text-foreground">
+            Destinations to consider
+          </h2>
+          <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-sans font-semibold">
             Suggested based on your profile
-          </p>
+          </span>
         </div>
 
         {/* 3-across grid */}
@@ -87,7 +89,7 @@ export function CandidateArea({
                   </div>
                 ))}
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-[13.5px] italic text-muted-foreground">
                 No candidates yet. Start the conversation to discover destinations.
               </p>
             </div>
@@ -111,8 +113,6 @@ export function CandidateArea({
 
   /* ── COMPARE ───────────────────────────────────────────────────────── */
   if (mode === 'compare') {
-    // Match shortlisted candidates; fall back to shortlist name stubs if agent
-    // hasn't responded yet (immediate transition)
     const shortlistedCandidates = shortlist.map((name) => {
       return (
         candidates.find((c) => c.name === name) || {
@@ -128,17 +128,19 @@ export function CandidateArea({
     });
 
     return (
-      <div className="space-y-5">
+      <div className="space-y-8">
         {/* Heading */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-baseline justify-between">
           <div>
-            <h2 className="font-serif text-2xl font-bold text-ink">Comparing your shortlist</h2>
-            <p className="text-xs font-semibold text-muted-foreground mt-1 tracking-wide uppercase">
+            <h2 className="font-serif text-2xl font-semibold tracking-tight text-foreground">
+              Comparing your shortlist
+            </h2>
+            <span className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground font-sans font-semibold">
               Compared to your profile
-            </p>
+            </span>
           </div>
           {isEnriching && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground font-sans">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-ocean animate-pulse" />
               Analysing…
             </div>
@@ -165,7 +167,11 @@ export function CandidateArea({
         </div>
 
         {/* Not Quite Right? Bar */}
-        <NotQuiteRightBar onFindOthers={onFindOthers} showReconsider={false} />
+        <NotQuiteRightBar
+          onFindOthers={onFindOthers}
+          onBackToShortlist={onBackToShortlist}
+          showReconsider={false}
+        />
       </div>
     );
   }
@@ -175,90 +181,29 @@ export function CandidateArea({
     const winner = candidates.find((c) => c.name === selectedWinner);
 
     return (
-      <div className="space-y-5">
+      <div className="space-y-8">
         {/* Heading */}
-        <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700 mb-2">
-            <span>✓</span> DECIDED
+        <div className="flex items-baseline justify-between">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-ocean-deep-bg px-2.5 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-ocean-deep font-sans">
+              <Check className="size-3" /> decided
+            </div>
+            <h2 className="mt-2 font-serif text-2xl font-semibold tracking-tight text-foreground">
+              Your destination
+            </h2>
           </div>
-          <h2 className="font-serif text-2xl font-bold text-ink">Your destination</h2>
         </div>
 
         {/* Decision card */}
         {winner && (
-          <div className="rounded-3xl border border-border bg-card shadow-card overflow-hidden">
-            <div className="relative h-64 overflow-hidden">
-              <img
-                src={winner.photo_url || GENERIC_FALLBACK_URL}
-                alt={winner.name}
-                onError={(e) => {
-                  e.currentTarget.src = GENERIC_FALLBACK_URL;
-                }}
-                className="size-full object-cover"
-              />
-              {/* Gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-              <div className="absolute bottom-4 left-5 text-white">
-                <h3 className="font-serif text-3xl font-bold">{winner.name}</h3>
-                {winner.region && (
-                  <p className="text-sm text-white/80 mt-0.5">{winner.region}</p>
-                )}
-              </div>
-              <div className="absolute top-4 right-4 rounded-full bg-emerald-500 px-3 py-1 text-xs font-semibold text-white">
-                YOUR PICK
-              </div>
-            </div>
-
-            <div className="p-6 space-y-4">
-              {/* Vibe */}
-              <div className="rounded-xl bg-teal-soft px-4 py-3">
-                <p className="text-xs font-semibold uppercase text-ocean-deep mb-1">Vacation vibe</p>
-                <p className="text-sm text-ink">{winner.vibe}</p>
-              </div>
-
-              {winner.best_for && (
-                <div className="rounded-xl bg-cream px-4 py-3">
-                  <p className="text-xs font-semibold uppercase text-muted-foreground mb-1">Best for</p>
-                  <p className="text-sm text-ink">{winner.best_for}</p>
-                </div>
-              )}
-
-              {winner.seasonal_note && (
-                <div className="rounded-xl bg-amber-50 px-4 py-3 border border-amber-200">
-                  <p className="text-xs font-semibold uppercase text-amber-900 mb-1">Seasonal note</p>
-                  <p className="text-sm text-amber-900">{winner.seasonal_note}</p>
-                </div>
-              )}
-
-              {/* Comparison rows for the winner */}
-              {comparisonMatrix && comparisonMatrix.length > 0 && (
-                <div className="border-t pt-4 space-y-2">
-                  {comparisonMatrix.map((row, idx) => {
-                    const criterion = row.criterion ?? Object.keys(row)[0];
-                    const value =
-                      row[winner.name] ??
-                      row[winner.name.toLowerCase()] ??
-                      Object.entries(row).find(
-                        ([k]) => k.toLowerCase() === winner.name.toLowerCase()
-                      )?.[1] ??
-                      '—';
-                    return (
-                      <div key={idx} className="flex justify-between text-sm">
-                        <span className="font-medium text-muted-foreground">{criterion}</span>
-                        <span className="text-ink">{value}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              <button
-                disabled
-                className="w-full bg-emerald-100 text-emerald-700 rounded-xl py-3 font-semibold text-sm cursor-not-allowed"
-              >
-                I'm going there! 🎉
-              </button>
-            </div>
+          <div className="mx-auto max-w-[640px] w-full">
+            <ShortlistCard
+              candidate={winner}
+              comparisonMatrix={comparisonMatrix}
+              isEnriching={isEnriching}
+              onSelectWinner={() => {}}
+              winner={true}
+            />
           </div>
         )}
 
@@ -274,7 +219,6 @@ export function CandidateArea({
   return null;
 }
 
-
 /* ────────────────────────────────────────────────────────────────────── */
 /* ShortlistBar                                                            */
 /* ────────────────────────────────────────────────────────────────────── */
@@ -288,61 +232,65 @@ interface ShortlistBarProps {
 }
 
 function ShortlistBar({ items, capacity, onRemove, onCompare, canCompare }: ShortlistBarProps) {
-  return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-card sticky bottom-0 backdrop-blur-sm bg-card/95">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-        Shortlist — {items.length} of {capacity}
-      </p>
+  const slots = Array.from({ length: capacity }, (_, i) => items[i]);
 
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        {Array.from({ length: capacity }).map((_, idx) => {
-          const item = items[idx];
-          return (
-            <div key={idx} className="relative">
-              {item ? (
-                <div className="relative h-20 rounded-xl overflow-hidden border border-border">
-                  <img
-                    src={item.photo_url || GENERIC_FALLBACK_URL}
-                    alt={item.name}
-                    onError={(e) => {
-                      e.currentTarget.src = GENERIC_FALLBACK_URL;
-                    }}
-                    className="size-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/25 flex items-end p-1.5">
-                    <p className="text-white text-[11px] font-semibold truncate w-full leading-tight">
-                      {item.name}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => onRemove(item.name)}
-                    className="absolute top-1 right-1 bg-white/90 rounded-full p-0.5 hover:bg-white transition"
-                    aria-label={`Remove ${item.name}`}
-                  >
-                    <X className="size-3 text-ink" />
-                  </button>
-                </div>
-              ) : (
-                <div className="h-20 rounded-xl border-2 border-dashed border-border flex items-center justify-center">
-                  <p className="text-xs text-muted-foreground">Empty</p>
-                </div>
-              )}
+  return (
+    <div className="flex items-center gap-4 rounded-2xl border border-border/70 bg-card px-5 py-4 shadow-card">
+      <div className="shrink-0">
+        <div className="text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground font-sans font-semibold">
+          Shortlist
+        </div>
+        <div className="mt-0.5 font-serif text-[15px] font-semibold text-foreground">
+          {items.length} of {capacity}
+        </div>
+      </div>
+
+      <div className="flex flex-1 items-center gap-2.5 flex-wrap">
+        {slots.map((slot, i) =>
+          slot ? (
+            <div
+              key={i}
+              className="flex items-center gap-2 rounded-full border border-border/70 bg-cream py-1 pl-1 pr-2.5 animate-fade-in"
+            >
+              <img
+                src={slot.photo_url || GENERIC_FALLBACK_URL}
+                alt={slot.name}
+                onError={(e) => {
+                  e.currentTarget.src = GENERIC_FALLBACK_URL;
+                }}
+                className="size-7 rounded-full object-cover"
+              />
+              <span className="font-sans text-[12.5px] font-medium text-foreground">{slot.name}</span>
+              <button
+                onClick={() => onRemove(slot.name)}
+                className="flex size-5 items-center justify-center rounded-full text-muted-foreground transition hover:bg-destructive-bg hover:text-destructive"
+                aria-label={`Remove ${slot.name}`}
+              >
+                <X className="size-3" />
+              </button>
             </div>
-          );
-        })}
+          ) : (
+            <div
+              key={i}
+              className="flex h-9 flex-1 min-w-[80px] items-center justify-center rounded-full border border-dashed border-border bg-muted-soft text-[11.5px] italic text-muted-foreground/70"
+            >
+              empty slot
+            </div>
+          )
+        )}
       </div>
 
       <button
         id="compare-shortlist-btn"
         onClick={onCompare}
         disabled={!canCompare}
-        className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-colors ${
+        className={`inline-flex h-10 items-center justify-center gap-1.5 rounded-xl px-4 font-sans text-[13px] font-medium transition shrink-0 ${
           canCompare
-            ? 'bg-ocean-deep text-white hover:bg-ocean/80'
-            : 'bg-muted text-muted-foreground cursor-not-allowed'
+            ? 'bg-ocean-deep text-primary-foreground shadow-card hover:bg-ocean'
+            : 'cursor-not-allowed bg-muted text-muted-foreground/70'
         }`}
       >
-        {canCompare ? 'Compare shortlist →' : `Add ${2 - items.length > 0 ? 2 - items.length : 0} more to compare`}
+        Compare shortlist
       </button>
     </div>
   );
@@ -364,36 +312,46 @@ function NotQuiteRightBar({
   showReconsider,
 }: NotQuiteRightBarProps) {
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-card">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+    <div className="rounded-2xl border border-border/70 bg-card px-5 py-4 shadow-card">
+      <div className="mb-3 text-[10.5px] font-medium uppercase tracking-[0.14em] text-muted-foreground font-sans font-semibold">
         Not quite right?
-      </p>
-
-      <div className={`grid gap-2 ${showReconsider ? 'grid-cols-2' : 'grid-cols-1'}`}>
-        <button
-          id="find-others-btn"
-          onClick={onFindOthers}
-          className="flex items-center justify-between gap-2 rounded-xl bg-cream px-4 py-3 text-sm font-medium text-ink hover:bg-sand transition-colors"
-        >
-          <div className="text-left">
-            <p className="font-semibold text-sm">Explore more destinations</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Keep the brief, see new options</p>
-          </div>
-          <span className="text-base shrink-0">→</span>
-        </button>
-
-        {showReconsider && onBackToShortlist && (
-          <button
-            id="back-to-shortlist-btn"
-            onClick={onBackToShortlist}
-            className="flex items-center justify-between gap-2 rounded-xl bg-teal-soft px-4 py-3 text-sm font-medium text-ink hover:bg-teal/20 transition-colors"
-          >
-            <div className="text-left">
-              <p className="font-semibold text-sm">Reconsider your options</p>
-              <p className="text-xs text-muted-foreground mt-0.5">Revisit the trips you compared</p>
+      </div>
+      <div className={`grid gap-3 ${showReconsider ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-cream px-4 py-3">
+          <div>
+            <div className="font-serif text-[14.5px] font-semibold leading-tight text-foreground">
+              Explore more destinations
             </div>
-            <ArrowLeft className="size-4 shrink-0" />
+            <div className="mt-0.5 text-[11.5px] text-muted-foreground font-sans">
+              Keep the brief, see new options
+            </div>
+          </div>
+          <button
+            id="find-others-btn"
+            onClick={onFindOthers}
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 font-sans text-[12px] font-medium text-foreground transition hover:bg-muted"
+          >
+            Find others
           </button>
+        </div>
+        {showReconsider && onBackToShortlist && (
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-teal-soft-muted px-4 py-3">
+            <div>
+              <div className="font-serif text-[14.5px] font-semibold leading-tight text-ocean-deep">
+                Reconsider your options
+              </div>
+              <div className="mt-0.5 text-[11.5px] text-muted-foreground font-sans">
+                Revisit the trips you compared
+              </div>
+            </div>
+            <button
+              id="back-to-shortlist-btn"
+              onClick={onBackToShortlist}
+              className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-ocean-deep/20 bg-card px-3 font-sans text-[12px] font-medium text-ocean-deep transition hover:bg-cream"
+            >
+              <ArrowLeft className="size-3.5" /> Back to my shortlist
+            </button>
+          </div>
         )}
       </div>
     </div>

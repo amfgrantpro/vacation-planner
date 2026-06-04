@@ -1,4 +1,5 @@
 import type { DestinationCandidate } from '../types';
+import { ArrowRight, CloudSun, Activity, Car, BedDouble, Sparkles, CalendarRange } from 'lucide-react';
 
 const GENERIC_FALLBACK_URL =
   'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&auto=format&fit=crop&q=80';
@@ -8,6 +9,7 @@ export interface ShortlistCardProps {
   comparisonMatrix: Record<string, string>[] | null;
   isEnriching: boolean;
   onSelectWinner: () => void;
+  winner?: boolean;
 }
 
 export function ShortlistCard({
@@ -15,11 +17,27 @@ export function ShortlistCard({
   comparisonMatrix,
   isEnriching,
   onSelectWinner,
+  winner = false,
 }: ShortlistCardProps) {
+  const getIconForCriterion = (label: string) => {
+    const norm = label.toLowerCase();
+    if (norm.includes('weather')) return <CloudSun className="size-3.5" />;
+    if (norm.includes('activities') || norm.includes('activity')) return <Activity className="size-3.5" />;
+    if (norm.includes('around') || norm.includes('transit') || norm.includes('car') || norm.includes('getting')) return <Car className="size-3.5" />;
+    if (norm.includes('accommodation') || norm.includes('hotel') || norm.includes('stay')) return <BedDouble className="size-3.5" />;
+    if (norm.includes('style') || norm.includes('vibe')) return <Sparkles className="size-3.5" />;
+    if (norm.includes('season') || norm.includes('month') || norm.includes('when')) return <CalendarRange className="size-3.5" />;
+    return <Sparkles className="size-3.5" />;
+  };
+
   return (
-    <div className="rounded-3xl border border-border bg-card shadow-card overflow-hidden flex flex-col">
+    <article
+      className={`flex flex-col overflow-hidden rounded-3xl border bg-card shadow-card transition-all duration-300 ${
+        winner ? 'border-ocean-deep/30 ring-2 ring-ocean-deep/15' : 'border-border/70'
+      }`}
+    >
       {/* Photo */}
-      <div className="relative h-52 overflow-hidden shrink-0">
+      <div className="relative h-64 overflow-hidden shrink-0">
         <img
           src={candidate.photo_url || GENERIC_FALLBACK_URL}
           alt={candidate.name}
@@ -28,57 +46,59 @@ export function ShortlistCard({
           }}
           className="size-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
-        <div className="absolute bottom-3 left-4 text-white">
-          <h3 className="font-serif text-2xl font-bold leading-tight">{candidate.name}</h3>
-          {candidate.region && (
-            <p className="text-xs text-white/70 mt-0.5">{candidate.region}</p>
-          )}
+        <div className="absolute left-4 top-4 rounded-full bg-cream-overlay px-2.5 py-1 text-[10.5px] font-medium uppercase tracking-[0.12em] text-ocean-deep backdrop-blur">
+          {candidate.region}
         </div>
+        {winner && (
+          <div className="absolute right-4 top-4 rounded-full bg-ocean-deep px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.12em] text-primary-foreground shadow-sm">
+            your pick
+          </div>
+        )}
       </div>
 
       {/* Content */}
-      <div className="p-5 flex flex-col gap-3 flex-1">
+      <div className="flex flex-1 flex-col gap-4 p-6">
+        <div>
+          <h4 className="font-serif text-2xl font-semibold tracking-tight text-foreground">{candidate.name}</h4>
+          <div className="mt-0.5 text-[12.5px] text-muted-foreground">{candidate.region}</div>
+        </div>
+
         {/* Vibe box */}
-        <div className="rounded-xl bg-teal-soft px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-ocean-deep mb-1">
+        <div className="rounded-xl bg-teal-soft px-4 py-3.5">
+          <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-ocean-deep/80">
             Vacation vibe
-          </p>
-          <p className="text-sm text-ink leading-snug">
-            {candidate.vibe || (
-              <span className="italic text-muted-foreground">Exploring…</span>
-            )}
+          </div>
+          <p className="mt-1 font-sans text-[13.5px] leading-relaxed text-foreground/85">
+            {candidate.vibe || <span className="italic text-muted-foreground/70">Exploring…</span>}
           </p>
         </div>
 
         {/* Best for */}
         {(candidate.best_for || isEnriching) && (
-          <div className="rounded-xl bg-cream px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
-              Best for
-            </p>
-            <p className={`text-sm ${candidate.best_for ? 'text-ink' : 'italic text-muted-foreground'}`}>
-              {candidate.best_for || 'Analysing…'}
+          <div className="flex items-start gap-2 rounded-xl bg-sage-bg px-3.5 py-2.5">
+            <Sparkles className="mt-0.5 size-3.5 shrink-0 text-[oklch(0.4_0.07_155)]" />
+            <p className="font-sans text-[12.5px] leading-relaxed text-foreground/85">
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-[oklch(0.4_0.07_155)] font-semibold">Best for · </span>
+              {candidate.best_for || <span className="italic text-muted-foreground/70">Analysing…</span>}
             </p>
           </div>
         )}
 
         {/* Seasonal note */}
         {(candidate.seasonal_note || isEnriching) && (
-          <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-900 mb-1">
-              Seasonal note
-            </p>
-            <p className={`text-sm ${candidate.seasonal_note ? 'text-amber-900' : 'italic text-amber-600'}`}>
-              {candidate.seasonal_note || 'Analysing…'}
+          <div className="flex items-start gap-2 rounded-xl bg-sun-bg-soft px-3.5 py-2.5">
+            <CalendarRange className="mt-0.5 size-3.5 shrink-0 text-[oklch(0.45_0.13_70)]" />
+            <p className="font-sans text-[12.5px] leading-relaxed text-foreground/85">
+              <span className="font-semibold text-[oklch(0.45_0.13_70)]">In season: </span>
+              {candidate.seasonal_note || <span className="italic text-muted-foreground/70">Analysing…</span>}
             </p>
           </div>
         )}
 
-        {/* Matrix rows */}
-        {comparisonMatrix && comparisonMatrix.length > 0 ? (
-          <div className="border-t pt-3 space-y-2 flex-1">
-            {comparisonMatrix.map((row, idx) => {
+        {/* Comparison rows */}
+        <div className="divide-y divide-border/70 rounded-xl border border-border/70 bg-cream-soft overflow-hidden">
+          {comparisonMatrix && comparisonMatrix.length > 0 ? (
+            comparisonMatrix.map((row, idx) => {
               const criterion = row.criterion ?? Object.keys(row)[0];
               const value =
                 row[candidate.name] ??
@@ -87,43 +107,55 @@ export function ShortlistCard({
                   ([k]) => k.toLowerCase() === candidate.name.toLowerCase()
                 )?.[1];
               return (
-                <div key={idx} className="grid grid-cols-[150px_1fr] text-sm gap-3">
-                  <span className="font-medium text-muted-foreground">{criterion}</span>
-                  <span
-                    className={`${
-                      !value ? 'italic text-muted-foreground' : 'text-ink'
+                <div key={idx} className="grid grid-cols-[150px_1fr] items-start gap-3 px-4 py-2.5">
+                  <div className="flex items-center gap-2 text-muted-foreground shrink-0">
+                    <span className="text-ocean-deep/80 shrink-0">{getIconForCriterion(criterion)}</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] leading-tight">{criterion}</span>
+                  </div>
+                  <div
+                    className={`font-sans text-[13px] leading-snug ${
+                      !value ? 'italic text-muted-foreground/75' : 'text-foreground/85'
                     }`}
                   >
                     {value || (isEnriching ? 'Analysing…' : '—')}
-                  </span>
+                  </div>
                 </div>
               );
-            })}
-          </div>
-        ) : isEnriching ? (
-          /* Skeleton rows while agent is working */
-          <div className="border-t pt-3 space-y-2 flex-1">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex justify-between items-center">
-                <div className="h-3 w-24 bg-muted rounded-full animate-pulse" />
-                <div className="h-3 w-20 bg-muted rounded-full animate-pulse" />
+            })
+          ) : isEnriching ? (
+            /* Skeleton rows when enriching */
+            [1, 2, 3, 4].map((i) => (
+              <div key={i} className="grid grid-cols-[150px_1fr] items-center gap-3 px-4 py-2.5 animate-pulse">
+                <div className="flex items-center gap-2">
+                  <div className="size-3.5 bg-muted rounded-full animate-pulse" />
+                  <div className="h-3 w-16 bg-muted rounded-full animate-pulse" />
+                </div>
+                <div className="h-3 w-3/4 bg-muted rounded-full animate-pulse" />
               </div>
-            ))}
+            ))
+          ) : (
+            <div className="px-4 py-3 text-center text-xs text-muted-foreground italic">
+              No comparison matrix generated yet.
+            </div>
+          )}
+        </div>
+
+        {/* Action Button */}
+        {winner ? (
+          <div className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sun-glow via-coral-glow to-teal-soft px-4 py-3.5 font-serif text-[16px] font-semibold text-ocean-deep shadow-sm">
+            <Sparkles className="size-4 text-coral animate-pulse" />
+            I'm going to go to there!
           </div>
-        ) : null}
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* CTA */}
-        <button
-          id={`choose-${candidate.name.toLowerCase().replace(/\s+/g, '-')}`}
-          onClick={onSelectWinner}
-          className="w-full bg-ocean-deep text-white rounded-xl py-3 font-semibold text-sm hover:bg-ocean/80 transition-colors mt-2"
-        >
-          I want to go here
-        </button>
+        ) : (
+          <button
+            id={`choose-${candidate.name.toLowerCase().replace(/\s+/g, '-')}`}
+            onClick={onSelectWinner}
+            className="mt-1 inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-ocean-deep font-sans text-[14px] font-semibold text-primary-foreground shadow-card transition hover:bg-ocean"
+          >
+            I want to go to there! <ArrowRight className="size-4" />
+          </button>
+        )}
       </div>
-    </div>
+    </article>
   );
 }

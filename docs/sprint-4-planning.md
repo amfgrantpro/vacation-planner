@@ -1,4 +1,4 @@
-# **Sprint 4 Planning (WIP)**
+# **Sprint 4 Planning**
 
 ## **1\. Executive Alignment**
 
