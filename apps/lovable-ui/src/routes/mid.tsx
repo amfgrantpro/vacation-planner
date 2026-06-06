@@ -1,7 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { ChatPanel, type ChatMsg } from "@/components/ChatPanel";
 import { TripProfile, buildProfile } from "@/components/TripProfile";
-import { CandidateCard, ShortlistBar, type Candidate } from "@/components/CandidateCard";
+import {
+  CandidateCard,
+  RemovedTray,
+  ShortlistBar,
+  useRejectableCandidates,
+  type Candidate,
+} from "@/components/CandidateCard";
 import { photos } from "@/lib/photos";
 
 export const Route = createFileRoute("/mid")({
@@ -37,6 +43,24 @@ const candidates: Candidate[] = [
     image: photos.sicily,
     vibe: "Markets, seafood and golden September light, with relaxed beach towns like Cefalù and Trapani within easy driving distance.",
   },
+  {
+    name: "Amalfi Coast",
+    region: "Italy",
+    image: photos.amalfi,
+    vibe: "Pastel cliffside villages, lemon groves and long lazy lunches by the sea. Romantic and walkable between Positano and Ravello.",
+  },
+  {
+    name: "Crete",
+    region: "Greece",
+    image: photos.crete,
+    vibe: "Wild south-coast beaches, mountain villages and a deep food culture. Warm seas well into October.",
+  },
+  {
+    name: "Porto",
+    region: "Portugal",
+    image: photos.porto,
+    vibe: "River-and-ocean city with a tight old town, port lodges across the Douro and easy access to Atlantic beaches an hour north.",
+  },
 ];
 
 function MidScreen() {
@@ -50,6 +74,8 @@ function MidScreen() {
     likes: "Food markets, swimming, walkable old towns, wine",
     avoid: "Greece, big crowds",
   });
+
+  const { visible, removed, reject, unremove } = useRejectableCandidates(candidates);
 
   return (
     <div className="flex min-h-screen w-full">
@@ -69,11 +95,17 @@ function MidScreen() {
             </div>
 
             <div className="grid grid-cols-3 gap-5">
-              {candidates.map((c) => (
-                <CandidateCard key={c.name} c={c} />
+              {visible.map((c) => (
+                <CandidateCard key={c.name} c={c} onReject={(reason) => reject(c, reason)} />
               ))}
             </div>
           </section>
+
+          {removed.length > 0 && (
+            <section className="mt-5">
+              <RemovedTray items={removed} onUnremove={unremove} />
+            </section>
+          )}
 
           <section className="mt-8">
             <ShortlistBar

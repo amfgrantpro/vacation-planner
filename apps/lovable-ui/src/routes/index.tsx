@@ -67,8 +67,10 @@ function Landing() {
             <div>
               I want to plan a trip for
               <Pill filled>a couple</Pill>
+            </div>
+            <div>
               travelling from
-              <Inline>Berlin</Inline>
+              <Pill filled hasChevron={false}>Berlin</Pill>
             </div>
             <div>
               I want to travel in
@@ -83,7 +85,7 @@ function Landing() {
             <button className="inline-flex items-center gap-2 rounded-full border border-ocean-deep/15 bg-cream px-5 py-2.5 font-sans text-[14px] font-medium text-ocean-deep transition hover:bg-ocean-deep hover:text-primary-foreground">
               <MapPin className="size-4" /> I already have destinations in mind
             </button>
-            <button className="inline-flex items-center gap-2 rounded-full bg-ocean-deep px-5 py-2.5 font-sans text-[14px] font-medium text-primary-foreground shadow-card transition hover:bg-ocean">
+            <button className="inline-flex items-center gap-2 rounded-full border border-ocean-deep/15 bg-cream px-5 py-2.5 font-sans text-[14px] font-medium text-ocean-deep transition hover:bg-ocean-deep hover:text-primary-foreground">
               <Lightbulb className="size-4" /> Inspire me where to go
             </button>
           </div>

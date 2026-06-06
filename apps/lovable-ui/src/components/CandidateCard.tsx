@@ -1,4 +1,7 @@
-import { Plus, X, MessageCircle, ArrowLeft } from "lucide-react";
+import { useState } from "react";
+import { Plus, X, MessageCircle, ArrowLeft, ChevronDown, RotateCcw } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { toast } from "sonner";
 
 export type Candidate = {
   name: string;
@@ -7,9 +10,21 @@ export type Candidate = {
   vibe: string;
 };
 
-export function CandidateCard({ c }: { c: Candidate }) {
+export type RejectReason = "Been there" | "Too far" | "Not my vibe" | "Other";
+const REASONS: RejectReason[] = ["Been there", "Too far", "Not my vibe", "Other"];
+
+export type RemovedCandidate = { candidate: Candidate; reason: RejectReason };
+
+export function CandidateCard({
+  c,
+  onReject,
+}: {
+  c: Candidate;
+  onReject?: (reason: RejectReason) => void;
+}) {
+  const [open, setOpen] = useState(false);
   return (
-    <article className="group flex flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-card transition hover:shadow-soft">
+    <article className="group relative flex flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-card transition hover:shadow-soft">
       <div className="relative h-48 overflow-hidden">
         <img
           src={c.image}
@@ -19,6 +34,37 @@ export function CandidateCard({ c }: { c: Candidate }) {
         <div className="absolute left-3 top-3 rounded-full bg-cream/90 px-2.5 py-1 text-[10.5px] font-medium uppercase tracking-[0.12em] text-ocean-deep backdrop-blur">
           {c.region}
         </div>
+        {onReject && (
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <button
+                aria-label={`Reject ${c.name}`}
+                className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-full bg-cream/90 text-ocean-deep/70 backdrop-blur transition hover:bg-destructive hover:text-destructive-foreground"
+              >
+                <X className="size-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-60 p-3">
+              <div className="mb-2 text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                Why remove?
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {REASONS.map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => {
+                      setOpen(false);
+                      onReject(r);
+                    }}
+                    className="rounded-full border border-border bg-card px-2.5 py-1 font-sans text-[12px] text-foreground transition hover:bg-ocean-deep hover:text-primary-foreground"
+                  >
+                    {r}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
       </div>
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div>
@@ -46,6 +92,76 @@ export function CandidateCard({ c }: { c: Candidate }) {
       </div>
     </article>
   );
+}
+
+export function RemovedTray({
+  items,
+  onUnremove,
+}: {
+  items: RemovedCandidate[];
+  onUnremove: (name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  if (items.length === 0) return null;
+  return (
+    <div className="rounded-2xl border border-border/70 bg-card/60 shadow-card">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between px-5 py-3.5 text-left"
+      >
+        <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          Removed ({items.length})
+        </span>
+        <ChevronDown
+          className={`size-4 text-muted-foreground transition ${open ? "rotate-180" : ""}`}
+        />
+      </button>
+      {open && (
+        <div className="flex flex-wrap gap-2 border-t border-border/60 px-5 py-4">
+          {items.map((it) => (
+            <div
+              key={it.candidate.name}
+              className="flex items-center gap-2 rounded-full border border-border/70 bg-cream px-3 py-1.5"
+            >
+              <span className="font-sans text-[12.5px] font-medium text-foreground/80">
+                {it.candidate.name}
+              </span>
+              <span className="text-[11px] text-muted-foreground">· {it.reason}</span>
+              <button
+                onClick={() => onUnremove(it.candidate.name)}
+                className="ml-0.5 flex size-5 items-center justify-center rounded-full text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                aria-label={`Un-remove ${it.candidate.name}`}
+                title="Un-remove (eligible to suggest again)"
+              >
+                <RotateCcw className="size-3" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function useRejectableCandidates(initial: Candidate[]) {
+  const [removed, setRemoved] = useState<RemovedCandidate[]>([]);
+  const visible = initial.filter((c) => !removed.some((r) => r.candidate.name === c.name));
+
+  const reject = (c: Candidate, reason: RejectReason) => {
+    setRemoved((prev) => [...prev, { candidate: c, reason }]);
+    toast(`Removed ${c.name}`, {
+      action: {
+        label: "Undo",
+        onClick: () =>
+          setRemoved((prev) => prev.filter((r) => r.candidate.name !== c.name)),
+      },
+    });
+  };
+
+  const unremove = (name: string) =>
+    setRemoved((prev) => prev.filter((r) => r.candidate.name !== name));
+
+  return { visible, removed, reject, unremove };
 }
 
 export function ShortlistBar({
