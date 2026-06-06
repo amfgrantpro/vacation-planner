@@ -55,7 +55,7 @@ export function ChatInterface({ messages, onSendMessage, isLoading }: ChatInterf
             <div
               className={`font-sans text-[14px] leading-relaxed px-4 py-2.5 shadow-card ${
                 msg.role === 'user'
-                  ? 'max-w-[88%] rounded-[20px] rounded-tr-md bg-ocean-deep text-white'
+                  ? 'max-w-[88%] rounded-[20px] rounded-tr-md bg-ocean-deep text-primary-foreground'
                   : 'max-w-[92%] rounded-[20px] rounded-tl-md bg-card text-foreground'
               }`}
             >

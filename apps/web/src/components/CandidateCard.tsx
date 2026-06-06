@@ -1,8 +1,12 @@
-import { Plus, MessageCircle } from 'lucide-react';
-import type { DestinationCandidate } from '../types';
+import { useState } from 'react';
+import { Plus, MessageCircle, X } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@radix-ui/react-popover';
+import type { DestinationCandidate, RejectReason } from '../types';
 
 const GENERIC_FALLBACK_URL =
   'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&auto=format&fit=crop&q=80';
+
+const REJECT_REASONS: RejectReason[] = ['Been there', 'Too far', 'Not my vibe', 'Other'];
 
 export interface CandidateCardProps {
   candidate: DestinationCandidate;
@@ -10,6 +14,7 @@ export interface CandidateCardProps {
   shortlistFull: boolean;
   onTellMeMore: () => void;
   onAddToShortlist: () => void;
+  onReject: (reason: RejectReason) => void;
 }
 
 export function CandidateCard({
@@ -18,7 +23,10 @@ export function CandidateCard({
   shortlistFull,
   onTellMeMore,
   onAddToShortlist,
+  onReject,
 }: CandidateCardProps) {
+  const [popoverOpen, setPopoverOpen] = useState(false);
+
   return (
     <article className="group flex flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-card transition hover:shadow-soft duration-300">
       <div className="relative h-48 overflow-hidden">
@@ -33,10 +41,45 @@ export function CandidateCard({
         <div className="absolute left-3 top-3 rounded-full bg-cream-overlay px-2.5 py-1 text-[10.5px] font-medium uppercase tracking-[0.12em] text-ocean-deep backdrop-blur">
           {candidate.region}
         </div>
-        {isInShortlist && (
-          <div className="absolute right-3 top-3 rounded-full bg-ocean-deep px-2.5 py-1 text-[10.5px] font-semibold text-white shadow-sm">
+
+        {isInShortlist ? (
+          <div className="absolute right-3 top-3 rounded-full bg-ocean-deep px-2.5 py-1 text-[10.5px] font-semibold text-primary-foreground shadow-sm">
             ✓ Shortlisted
           </div>
+        ) : (
+          <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+            <PopoverTrigger asChild>
+              <button
+                aria-label={`Remove ${candidate.name}`}
+                className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-full bg-cream-overlay text-ocean-deep/70 backdrop-blur opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-primary-foreground"
+              >
+                <X className="size-3.5" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              sideOffset={6}
+              className="z-50 w-60 rounded-2xl border border-border/70 bg-card p-3 shadow-soft"
+            >
+              <div className="mb-2 text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                Why remove?
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {REJECT_REASONS.map((reason) => (
+                  <button
+                    key={reason}
+                    onClick={() => {
+                      setPopoverOpen(false);
+                      onReject(reason);
+                    }}
+                    className="rounded-full border border-border bg-card px-2.5 py-1 font-sans text-[12px] text-foreground transition hover:bg-ocean-deep hover:text-primary-foreground hover:border-ocean-deep"
+                  >
+                    {reason}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
       </div>
 
@@ -69,10 +112,10 @@ export function CandidateCard({
             disabled={shortlistFull && !isInShortlist}
             className={`inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border font-sans text-[12.5px] font-medium transition ${
               isInShortlist
-                ? 'bg-ocean-deep border-ocean-deep text-white hover:bg-ocean-deep-dim shadow-card'
+                ? 'bg-ocean-deep border-ocean-deep text-primary-foreground hover:bg-ocean-deep-dim shadow-card'
                 : shortlistFull
                   ? 'border-border bg-muted text-muted-foreground/60 cursor-not-allowed'
-                  : 'border-ocean-deep-border bg-cream text-ocean-deep hover:bg-ocean-deep hover:text-white'
+                  : 'border-ocean-deep-border bg-cream text-ocean-deep hover:bg-ocean-deep hover:text-primary-foreground'
             }`}
           >
             <Plus className="size-3.5" />

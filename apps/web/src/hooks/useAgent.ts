@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { VacationPlan, ChatMessage, UiState } from '../types';
+import type { VacationPlan, ChatMessage, UiState, RejectedCandidate } from '../types';
 
 
 export function useAgent() {
@@ -11,13 +11,18 @@ export function useAgent() {
         mode: 'explore',
         shortlist: [],
         selected_winner: null,
+        rejected_candidates: [],
     });
 
     const updateUiState = (updates: Partial<UiState>) => {
         setUiState((prev) => ({ ...prev, ...updates }));
     };
 
-    const sendMessage = async (content: string, overrideUiState?: UiState) => {
+    const sendMessage = async (
+        content: string,
+        overrideUiState?: UiState,
+        rejectedCandidates: RejectedCandidate[] = []
+    ) => {
         const newMessages: ChatMessage[] = [...messages, { role: 'user', content }];
         setMessages(newMessages);
         setIsLoading(true);
@@ -32,7 +37,10 @@ export function useAgent() {
                 body: JSON.stringify({
                     message: content,
                     session_id: sessionId,
-                    ui_state: stateToSend,
+                    ui_state: {
+                        ...stateToSend,
+                        rejected_candidates: rejectedCandidates,
+                    },
                 }),
             });
 

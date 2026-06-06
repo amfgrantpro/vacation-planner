@@ -19,14 +19,14 @@ TOOL_UPDATE_TRIP_PROFILE = {
         "parameters": {
             "type": "object",
             "properties": {
-                "origin": {"type": "string"},
-                "travelers": {"type": "string"},
-                "when": {"type": "string"},
-                "duration": {"type": "string"},
-                "budget": {"type": "string"},
-                "vacation_type": {"type": "string"},
-                "likes": {"type": "array", "items": {"type": "string"}},
-                "avoid": {"type": "array", "items": {"type": "string"}},
+                "origin": {"type": ["string", "null"]},
+                "travelers": {"type": ["string", "null"]},
+                "when": {"type": ["string", "null"]},
+                "duration": {"type": ["string", "null"]},
+                "budget": {"type": ["string", "null"]},
+                "vacation_type": {"type": ["string", "null"]},
+                "likes": {"type": ["array", "null"], "items": {"type": "string"}},
+                "avoid": {"type": ["array", "null"], "items": {"type": "string"}},
             },
         },
     },
@@ -140,6 +140,16 @@ class AgentOrchestrator:
                 return call_api(fallback_model)
             raise
 
+    def _sanitize_args(self, args: dict) -> dict:
+        """Strip None values from tool arguments before applying to the plan.
+
+        The Groq LLM sometimes outputs null for optional fields (e.g. budget: null),
+        which violates the tool schema's 'type: string' constraint and triggers a
+        Pydantic validation error on the server. Removing these keys before application
+        preserves existing plan values and prevents the 400 error.
+        """
+        return {k: v for k, v in args.items() if v is not None}
+
     def _apply_tool_call(self, tool_name: str, args: dict, plan: VacationPlan) -> tuple[VacationPlan, str]:
         """
         Applies a parsed tool call to the plan and returns (updated_plan, result_summary).
@@ -237,11 +247,11 @@ class AgentOrchestrator:
         plan_dict = plan.model_dump()
         system_msg = SystemPrompts.get_prompt_sprint4(plan_dict, plan.mode)
         
-        # Inject dynamic instruction to ensure 3 suggested candidates in explore mode
+        # Inject dynamic instruction to ensure 3 active (non-rejected) candidates in explore mode
         if plan.mode == "explore":
-            suggested_count = len([c for c in plan.candidates if c.status == "suggested"])
-            if suggested_count < 3:
-                system_msg += f"\n\nCRITICAL: You currently have {suggested_count} 'suggested' candidates. You MUST suggest {3 - suggested_count} or more new destinations THIS TURN. If you are also updating the profile, you MUST perform both actions in this single response."
+            active_count = len([c for c in plan.candidates if c.status == "suggested"])
+            if active_count < 3:
+                system_msg += f"\n\nCRITICAL: You currently have {active_count} 'suggested' candidates. You MUST suggest {3 - active_count} or more new destinations THIS TURN. If you are also updating the profile, you MUST perform both actions in this single response."
             
         messages = [{"role": "system", "content": system_msg}] + conversation_history
 
@@ -277,7 +287,7 @@ class AgentOrchestrator:
             # --- Execute all tool calls ---
             for tc in message.tool_calls:
                 try:
-                    args = json.loads(tc.function.arguments)
+                    args = self._sanitize_args(json.loads(tc.function.arguments))
                     print(f"🔧 Tool: {tc.function.name} | Args: {json.dumps(args)[:200]}")
                     plan, result_summary = self._apply_tool_call(tc.function.name, args, plan)
                     new_messages.append({

@@ -1,7 +1,8 @@
 import { X, ArrowLeft, Check } from 'lucide-react';
-import type { DestinationCandidate, Mode } from '../types';
+import type { DestinationCandidate, Mode, RejectedCandidate, RejectReason } from '../types';
 import { CandidateCard } from './CandidateCard';
 import { ShortlistCard } from './ShortlistCard';
+import { RemovedTray } from './RemovedTray';
 
 const GENERIC_FALLBACK_URL =
   'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&auto=format&fit=crop&q=80';
@@ -13,6 +14,7 @@ interface CandidateAreaProps {
   selectedWinner: string | null;
   comparisonMatrix: Record<string, string>[] | null;
   isEnriching: boolean;
+  rejectedCandidates: RejectedCandidate[];
   onTellMeMore: (destination: string) => void;
   onAddToShortlist: (destination: string) => void;
   onRemoveFromShortlist: (destination: string) => void;
@@ -20,6 +22,8 @@ interface CandidateAreaProps {
   onSelectWinner: (destination: string) => void;
   onFindOthers: () => void;
   onBackToShortlist: () => void;
+  onRejectCandidate: (name: string, reason: RejectReason) => void;
+  onUnremoveCandidate: (name: string) => void;
   canCompare: boolean;
 }
 
@@ -30,6 +34,7 @@ export function CandidateArea({
   selectedWinner,
   comparisonMatrix,
   isEnriching,
+  rejectedCandidates,
   onTellMeMore,
   onAddToShortlist,
   onRemoveFromShortlist,
@@ -37,11 +42,14 @@ export function CandidateArea({
   onSelectWinner,
   onFindOthers,
   onBackToShortlist,
+  onRejectCandidate,
+  onUnremoveCandidate,
   canCompare,
 }: CandidateAreaProps) {
-  // Show all non-shortlisted candidates in explore mode (cap at 6 for layout)
+  // Show only suggested candidates, excluding both backend-rejected and locally-rejected
+  const locallyRejected = new Set(rejectedCandidates.map((r) => r.name.toLowerCase()));
   const suggestedCandidates = candidates
-    .filter((c) => c.status === 'suggested')
+    .filter((c) => c.status === 'suggested' && !locallyRejected.has(c.name.toLowerCase()))
     .slice(0, 6);
 
   /* ── EXPLORE ───────────────────────────────────────────────────────── */
@@ -69,6 +77,7 @@ export function CandidateArea({
                 shortlistFull={shortlist.length >= 3}
                 onTellMeMore={() => onTellMeMore(candidate.name)}
                 onAddToShortlist={() => onAddToShortlist(candidate.name)}
+                onReject={(reason) => onRejectCandidate(candidate.name, reason)}
               />
             ))
           ) : (
@@ -95,6 +104,9 @@ export function CandidateArea({
             </div>
           )}
         </div>
+
+        {/* Removed Tray — between grid and ShortlistBar */}
+        <RemovedTray items={rejectedCandidates} onUnremove={onUnremoveCandidate} />
 
         {/* Shortlist Bar */}
         <ShortlistBar

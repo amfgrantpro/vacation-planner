@@ -53,7 +53,7 @@ export default {
             fontFamily: {
                 'serif':   ['"Fraunces"', 'ui-serif', 'Georgia', 'serif'],
                 'display': ['"Fraunces"', 'ui-serif', 'Georgia', 'serif'],
-                'sans':    ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+                'sans':    ['"Fraunces"', 'ui-serif', 'Georgia', 'serif'],
             },
             borderRadius: {
                 '3xl': '1.5rem',

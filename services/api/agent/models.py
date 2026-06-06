@@ -20,9 +20,16 @@ class DestinationCandidate(BaseModel):
     region: str
     vibe: str  # Written specifically for this user
     photo_url: str
-    status: str = "suggested"  # "suggested" | "shortlisted"
+    status: str = "suggested"  # "suggested" | "shortlisted" | "rejected"
     best_for: Optional[str] = None
     seasonal_note: Optional[str] = None
+    rejection_reason: Optional[str] = None  # e.g. "Too far", "Been there"
+
+
+class RejectedCandidate(BaseModel):
+    """A candidate rejected by the user via the UI."""
+    name: str
+    reason: str  # "Been there" | "Too far" | "Not my vibe" | "Other"
 
 
 class VacationPlan(BaseModel):
@@ -40,4 +47,5 @@ class UiState(BaseModel):
     mode: str = "explore"  # "explore" | "compare" | "decision"
     shortlist: List[str] = Field(default_factory=list)  # destination names
     selected_winner: Optional[str] = None
+    rejected_candidates: List[RejectedCandidate] = Field(default_factory=list)
 

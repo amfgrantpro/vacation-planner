@@ -1,13 +1,16 @@
 
+import { useState } from 'react';
+import { Toaster, toast } from 'sonner';
 import { ChatInterface } from './components/ChatInterface';
 import { TripProfileComponent } from './components/TripProfileComponent';
 import { CandidateArea } from './components/CandidateArea';
 import { LandingScreen } from './components/LandingScreen';
 import { useAgent } from './hooks/useAgent';
-import type { VacationPlan, Mode } from './types';
+import type { VacationPlan, Mode, RejectedCandidate, RejectReason } from './types';
 
 function App() {
   const { messages, plan, isLoading, uiState, updateUiState, sendMessage } = useAgent();
+  const [rejectedCandidates, setRejectedCandidates] = useState<RejectedCandidate[]>([]);
 
   // Check if session has started
   const sessionStarted = messages.length > 0 || plan !== null;
@@ -16,7 +19,7 @@ function App() {
   const handleStartSession = (_path: 'inspire' | 'destinations') => {
     const initialMessage = sessionStorage.getItem('initialMessage') || 'Tell me about vacation options.';
     sessionStorage.removeItem('initialMessage');
-    sendMessage(initialMessage);
+    sendMessage(initialMessage, undefined, rejectedCandidates);
   };
 
   // Handlers for mode transitions and UI actions
@@ -36,29 +39,48 @@ function App() {
   const handleCompareShortlist = () => {
     const newUiState = { ...uiState, mode: 'compare' as Mode };
     updateUiState({ mode: 'compare' });
-    sendMessage(`I'd like to compare my shortlist now`, newUiState);
+    sendMessage(`I'd like to compare my shortlist now`, newUiState, rejectedCandidates);
   };
 
   const handleSelectWinner = (destination: string) => {
     const newUiState = { ...uiState, mode: 'decision' as Mode, selected_winner: destination };
     updateUiState({ mode: 'decision', selected_winner: destination });
-    sendMessage(`I've chosen ${destination} as my destination!`, newUiState);
+    sendMessage(`I've chosen ${destination} as my destination!`, newUiState, rejectedCandidates);
   };
 
   const handleFindOthers = () => {
     const newUiState = { ...uiState, mode: 'explore' as Mode };
     updateUiState({ mode: 'explore' });
-    sendMessage('Find others', newUiState);
+    sendMessage('Find others', newUiState, rejectedCandidates);
   };
 
   const handleBackToShortlist = () => {
     const newUiState = { ...uiState, mode: 'compare' as Mode };
     updateUiState({ mode: 'compare' });
-    sendMessage('Back to my shortlist', newUiState);
+    sendMessage('Back to my shortlist', newUiState, rejectedCandidates);
   };
 
   const handleTellMeMore = (destination: string) => {
-    sendMessage(`Tell me more about ${destination}`);
+    sendMessage(`Tell me more about ${destination}`, undefined, rejectedCandidates);
+  };
+
+  const handleRejectCandidate = (name: string, reason: RejectReason) => {
+    setRejectedCandidates((prev) => {
+      if (prev.some((r) => r.name.toLowerCase() === name.toLowerCase())) return prev;
+      return [...prev, { name, reason }];
+    });
+    toast(`Removed ${name}`, {
+      action: {
+        label: 'Undo',
+        onClick: () => handleUnremoveCandidate(name),
+      },
+    });
+  };
+
+  const handleUnremoveCandidate = (name: string) => {
+    setRejectedCandidates((prev) =>
+      prev.filter((r) => r.name.toLowerCase() !== name.toLowerCase())
+    );
   };
 
   // Determine if compare button should be active
@@ -69,7 +91,12 @@ function App() {
 
   // If session hasn't started, show landing screen
   if (!sessionStarted) {
-    return <LandingScreen onStartSession={handleStartSession} />;
+    return (
+      <>
+        <Toaster position="bottom-right" />
+        <LandingScreen onStartSession={handleStartSession} />
+      </>
+    );
   }
 
   // Session started: show split-panel layout
@@ -94,12 +121,14 @@ function App() {
   const currentPlan = plan || defaultPlan;
 
   return (
+    <>
+    <Toaster position="bottom-right" />
     <div className="flex h-screen w-screen overflow-hidden bg-background">
       {/* Left panel: Chat (35%) */}
       <section className="w-[35%] min-w-[420px] max-w-[520px] shrink-0 h-full">
         <ChatInterface
           messages={messages}
-          onSendMessage={sendMessage}
+          onSendMessage={(msg) => sendMessage(msg, undefined, rejectedCandidates)}
           isLoading={isLoading}
         />
       </section>
@@ -118,6 +147,7 @@ function App() {
             selectedWinner={currentPlan.selected_winner}
             comparisonMatrix={currentPlan.comparison_matrix}
             isEnriching={isEnriching}
+            rejectedCandidates={rejectedCandidates}
             onTellMeMore={handleTellMeMore}
             onAddToShortlist={handleAddToShortlist}
             onRemoveFromShortlist={handleRemoveFromShortlist}
@@ -125,11 +155,14 @@ function App() {
             onSelectWinner={handleSelectWinner}
             onFindOthers={handleFindOthers}
             onBackToShortlist={handleBackToShortlist}
+            onRejectCandidate={handleRejectCandidate}
+            onUnremoveCandidate={handleUnremoveCandidate}
             canCompare={canCompare}
           />
         </div>
       </main>
     </div>
+    </>
   );
 }
 

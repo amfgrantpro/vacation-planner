@@ -1,5 +1,14 @@
 export type Mode = 'explore' | 'compare' | 'decision';
 
+export type CandidateStatus = 'suggested' | 'shortlisted' | 'rejected';
+
+export type RejectReason = 'Been there' | 'Too far' | 'Not my vibe' | 'Other';
+
+export interface RejectedCandidate {
+  name: string;
+  reason: RejectReason;
+}
+
 export interface TripProfile {
   origin: string | null;
   travelers: string | null;
@@ -16,9 +25,10 @@ export interface DestinationCandidate {
   region: string;
   vibe: string;
   photo_url: string;
-  status: 'suggested' | 'shortlisted';
+  status: CandidateStatus;
   best_for?: string | null;
   seasonal_note?: string | null;
+  rejection_reason?: string | null;
 }
 
 export interface VacationPlan {
@@ -34,6 +44,7 @@ export interface UiState {
   mode: Mode;
   shortlist: string[];
   selected_winner: string | null;
+  rejected_candidates: RejectedCandidate[];
 }
 
 export interface ChatMessage {

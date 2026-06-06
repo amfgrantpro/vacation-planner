@@ -62,7 +62,7 @@ Available Tools: None — this is a conversation-only mode.
 
 Current Agent State:
 {state_json}
-
+{rejected_section}
 {mode_instruction}
 
 {shared_guidelines}
@@ -70,13 +70,48 @@ Current Agent State:
 """
 
     @classmethod
+    def _build_rejected_section(cls, plan_dict: dict) -> str:
+        """Build the Rejected Destinations block if any candidates are rejected."""
+        candidates = plan_dict.get("candidates", [])
+        rejected = [c for c in candidates if c.get("status") == "rejected"]
+        if not rejected:
+            return ""
+        lines = ["## Rejected Destinations",
+                 "The user has explicitly removed the following destinations from consideration.",
+                 "Do NOT suggest these again under any circumstances:"]
+        for c in rejected:
+            reason = c.get("rejection_reason") or "no reason given"
+            lines.append(f"- {c['name']} (reason: {reason})")
+        return "\n".join(lines) + "\n"
+
+    @classmethod
+    def _clean_candidates_for_prompt(cls, plan_dict: dict) -> dict:
+        """Strip backend-only fields from candidates before serialising to state JSON.
+
+        Fields like photo_url, best_for, seasonal_note, and rejection_reason are
+        resolved or displayed separately. Showing them in state JSON causes the LLM
+        to try to echo them in tool call output, producing malformed JSON.
+        """
+        keep = {"name", "region", "vibe", "status"}
+        cleaned = dict(plan_dict)
+        if "candidates" in cleaned:
+            cleaned["candidates"] = [
+                {k: v for k, v in c.items() if k in keep}
+                for c in cleaned["candidates"]
+            ]
+        return cleaned
+
+    @classmethod
     def get_prompt_sprint4(cls, plan_dict: dict, mode: str = "explore") -> str:
-        """Get mode-gated prompt for Sprint 4."""
+        """Get mode-gated prompt for Sprint 4+."""
         mode = mode.lower() if mode else "explore"
         mode_instruction = cls.MODE_INSTRUCTIONS.get(mode, cls.MODE_INSTRUCTIONS["explore"])
-        
+        rejected_section = cls._build_rejected_section(plan_dict)
+        clean_plan = cls._clean_candidates_for_prompt(plan_dict)
+
         return cls.TEMPLATE_SPRINT4.format(
-            state_json=json.dumps(plan_dict, indent=2),
+            state_json=json.dumps(clean_plan, indent=2),
+            rejected_section=rejected_section,
             mode_instruction=mode_instruction,
             shared_guidelines=cls.SHARED_GUIDELINES
         )

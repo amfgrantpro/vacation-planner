@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from agent.orchestrator import AgentOrchestrator
 from agent.prototype_orchestrator import AgentOrchestrator as PrototypeAgentOrchestrator
 from agent.session import session_manager, prototype_session_manager
-from agent.models import VacationPlan, UiState, DestinationCandidate, TripProfile
+from agent.models import VacationPlan, UiState, DestinationCandidate, TripProfile, RejectedCandidate
 from agent.prototype_models import VacationPlan as PrototypeVacationPlan
 
 app = FastAPI(title="Agentic Travel Planner API")
@@ -73,8 +73,32 @@ async def chat(request: ChatRequest):
                     if candidate.status == "shortlisted":
                         candidate.status = "suggested"
                 updated_candidates.append(candidate)
-            
+
             session.plan.candidates = updated_candidates
+
+            # Rejection sync: runs after shortlist sync; shortlist takes precedence
+            if request.ui_state.rejected_candidates:
+                rejected_lower = {
+                    r.name.lower().strip(): r.reason
+                    for r in request.ui_state.rejected_candidates
+                }
+                for candidate in session.plan.candidates:
+                    key = candidate.name.lower().strip()
+                    if key in rejected_lower:
+                        # Shortlisted candidates cannot be rejected
+                        if candidate.status != "shortlisted":
+                            candidate.status = "rejected"
+                            candidate.rejection_reason = rejected_lower[key]
+                    elif candidate.status == "rejected" and key not in rejected_lower:
+                        # Un-removed: restore to suggested
+                        candidate.status = "suggested"
+                        candidate.rejection_reason = None
+            else:
+                # Empty rejected list means un-remove all previously rejected candidates
+                for candidate in session.plan.candidates:
+                    if candidate.status == "rejected":
+                        candidate.status = "suggested"
+                        candidate.rejection_reason = None
 
         try:
             structured, updated_plan, new_messages = agent.run_turn(session.history, session.plan)

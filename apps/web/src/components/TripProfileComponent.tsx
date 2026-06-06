@@ -6,18 +6,13 @@ interface TripProfileComponentProps {
 }
 
 export function TripProfileComponent({ profile }: TripProfileComponentProps) {
-  const formatArray = (arr?: string[] | null) => {
-    if (!arr || arr.length === 0) return 'not set';
-    return arr.join(', ');
-  };
-
   const isSet = (val: any) => {
     if (val === null || val === undefined) return false;
     if (Array.isArray(val)) return val.length > 0;
     return val !== '' && val !== 'not set';
   };
 
-  const fields = [
+  const topFields = [
     {
       icon: <Plane className="size-3.5" />,
       label: 'Origin',
@@ -53,26 +48,32 @@ export function TripProfileComponent({ profile }: TripProfileComponentProps) {
       set: isSet(profile.budget),
       accent: 'coral' as const,
     },
+  ];
+
+  const bottomFields = [
     {
       icon: <Sun className="size-3.5" />,
       label: 'Vacation type & vibe',
       value: profile.vacation_type || 'not set',
       set: isSet(profile.vacation_type),
       accent: 'sun' as const,
+      items: null as string[] | null,
     },
     {
       icon: <Heart className="size-3.5" />,
       label: 'Things we like',
-      value: formatArray(profile.likes),
+      value: null,
       set: isSet(profile.likes),
       accent: 'coral' as const,
+      items: profile.likes && profile.likes.length > 0 ? profile.likes : null,
     },
     {
       icon: <Ban className="size-3.5" />,
       label: "Let's avoid",
-      value: formatArray(profile.avoid),
+      value: null,
       set: isSet(profile.avoid),
       accent: 'ocean' as const,
+      items: profile.avoid && profile.avoid.length > 0 ? profile.avoid : null,
     },
   ];
 
@@ -121,15 +122,13 @@ export function TripProfileComponent({ profile }: TripProfileComponentProps) {
     return `${baseClass} ${bgClass} ${textClass} shadow-sm`;
   };
 
-  const topFields = fields.slice(0, 5);
-  const bottomFields = fields.slice(5);
-
   return (
     <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-card">
       <div className="mb-4 flex items-baseline justify-between">
         <h3 className="font-serif text-base font-semibold tracking-tight text-foreground">Trip profile</h3>
       </div>
 
+      {/* Top row: 5 scalar fields */}
       <div className="grid grid-cols-5 gap-3">
         {topFields.map((f) => {
           const circleClass = getCircleClassName(f.accent);
@@ -141,9 +140,9 @@ export function TripProfileComponent({ profile }: TripProfileComponentProps) {
               <div className="min-w-0 flex-1">
                 <div className="text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">{f.label}</div>
                 <div
-                  className={`mt-0.5 font-sans text-[13px] leading-snug ${
+                  className={`mt-0.5 font-sans text-[13px] leading-snug truncate ${
                     f.set ? 'font-medium text-foreground' : 'italic text-muted-foreground/70'
-                  } truncate`}
+                  }`}
                 >
                   {f.value}
                 </div>
@@ -155,6 +154,7 @@ export function TripProfileComponent({ profile }: TripProfileComponentProps) {
 
       <div className="my-4 h-px bg-border/70" />
 
+      {/* Bottom row: vacation type (scalar) + two array fields rendered as chips */}
       <div className="grid grid-cols-3 gap-3">
         {bottomFields.map((f) => {
           const circleClass = getCircleClassName(f.accent);
@@ -165,13 +165,26 @@ export function TripProfileComponent({ profile }: TripProfileComponentProps) {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">{f.label}</div>
-                <div
-                  className={`mt-0.5 font-sans text-[13px] leading-snug ${
-                    f.set ? 'font-medium text-foreground' : 'italic text-muted-foreground/70'
-                  }`}
-                >
-                  {f.value}
-                </div>
+                {f.items ? (
+                  <div className="flex flex-wrap gap-1.5 mt-0.5">
+                    {f.items.map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full bg-cream px-2 py-0.5 font-sans text-[12px] font-medium text-foreground/80"
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div
+                    className={`mt-0.5 font-sans text-[13px] leading-snug ${
+                      f.set ? 'font-medium text-foreground' : 'italic text-muted-foreground/70'
+                    }`}
+                  >
+                    {f.value ?? 'not set'}
+                  </div>
+                )}
               </div>
             </div>
           );
