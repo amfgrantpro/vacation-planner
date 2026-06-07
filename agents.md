@@ -40,6 +40,7 @@ To simulate a Product Team, we follow a strict feedback-driven partnership:
   * If a Sprint is planned with phases, then the coding should be done in phases.
   * Confirm when each phase is completed.
 5.  **Tweak-Together**: The PM and Agent iterate on prompts and logic in real-time to refine the "vibe" and performance.
+6. **Documentation**: The Agent writes a detailed result doc (e.g., `docs/sprint-X-result.md`) for human review. The doc details the final increment - it documents the current state and how it differs from the last increment. It does NOT get lost in the needless details of bug fixing or the journey of getting there.
 
 ### **Proposing Changes**
 - The PM (human) wants to be guided in how real-world applications do this.
