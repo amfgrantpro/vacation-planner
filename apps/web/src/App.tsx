@@ -18,8 +18,11 @@ function App() {
   // Handler for landing screen CTAs
   const handleStartSession = (_path: 'inspire' | 'destinations') => {
     const initialMessage = sessionStorage.getItem('initialMessage') || 'Tell me about vacation options.';
+    const onboardingRaw = sessionStorage.getItem('onboardingProfile');
+    const onboardingProfile = onboardingRaw ? JSON.parse(onboardingRaw) : undefined;
     sessionStorage.removeItem('initialMessage');
-    sendMessage(initialMessage, undefined, rejectedCandidates);
+    sessionStorage.removeItem('onboardingProfile');
+    sendMessage(initialMessage, undefined, rejectedCandidates, onboardingProfile);
   };
 
   // Handlers for mode transitions and UI actions

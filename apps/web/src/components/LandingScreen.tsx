@@ -16,6 +16,17 @@ export function LandingScreen({ onStartSession }: LandingScreenProps) {
   const [vacationType, setVacationType] = useState('anything');
   const [budget, setBudget] = useState('not important for now');
 
+  const currentProfile: TripProfile = {
+    origin: origin || null,
+    travelers: travelers,
+    when: when !== 'whenever' ? when : null,
+    duration: duration !== 'however long' ? duration : null,
+    budget: budget !== 'not important for now' ? budget : null,
+    vacation_type: vacationType !== 'anything' ? vacationType : null,
+    likes: [],
+    avoid: [],
+  };
+
   const handleStartSession = (path: 'inspire' | 'destinations') => {
     // Build the initial message to send to the agent
     const parts = [
@@ -36,21 +47,11 @@ export function LandingScreen({ onStartSession }: LandingScreenProps) {
       parts.push(`and I already have destinations in mind`);
     }
 
-    // Store the initial message in sessionStorage to be sent after rendering
+    // Store the initial message and structured profile in sessionStorage to be sent after rendering
     sessionStorage.setItem('initialMessage', parts.join(', ') + '.');
+    sessionStorage.setItem('onboardingProfile', JSON.stringify(currentProfile));
 
     onStartSession(path);
-  };
-
-  const currentProfile: TripProfile = {
-    origin: origin || null,
-    travelers: travelers,
-    when: when !== 'whenever' ? when : null,
-    duration: duration !== 'however long' ? duration : null,
-    budget: budget !== 'not important for now' ? budget : null,
-    vacation_type: vacationType !== 'anything' ? vacationType : null,
-    likes: [],
-    avoid: [],
   };
 
   return (

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { VacationPlan, ChatMessage, UiState, RejectedCandidate } from '../types';
+import type { VacationPlan, ChatMessage, UiState, RejectedCandidate, TripProfile } from '../types';
 
 
 export function useAgent() {
@@ -21,7 +21,8 @@ export function useAgent() {
     const sendMessage = async (
         content: string,
         overrideUiState?: UiState,
-        rejectedCandidates: RejectedCandidate[] = []
+        rejectedCandidates: RejectedCandidate[] = [],
+        onboardingProfile?: TripProfile
     ) => {
         const newMessages: ChatMessage[] = [...messages, { role: 'user', content }];
         setMessages(newMessages);
@@ -41,6 +42,7 @@ export function useAgent() {
                         ...stateToSend,
                         rejected_candidates: rejectedCandidates,
                     },
+                    onboarding_profile: onboardingProfile ?? null,
                 }),
             });
 

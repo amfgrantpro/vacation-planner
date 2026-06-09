@@ -23,6 +23,7 @@ class ChatRequest(BaseModel):
     message: str
     session_id: str
     ui_state: Optional[UiState] = None  # Optional for backward compatibility with prototype
+    onboarding_profile: Optional[TripProfile] = None
 
 
 class ChatResponse(BaseModel):
@@ -53,6 +54,13 @@ def health_check():
 async def chat(request: ChatRequest):
     try:
         session = session_manager.get_session(request.session_id)
+
+        if not session.history and request.onboarding_profile:
+            incoming = request.onboarding_profile.model_dump(exclude_none=True)
+            for field, value in incoming.items():
+                if value not in (None, [], ""):
+                    setattr(session.plan.trip_profile, field, value)
+
         session.history.append({"role": "user", "content": request.message})
 
         # State reconciliation: sync frontend UI state with backend plan

@@ -15,7 +15,7 @@ TOOL_UPDATE_TRIP_PROFILE = {
     "type": "function",
     "function": {
         "name": "update_trip_profile",
-        "description": "Update the traveler's trip profile based on conversation extraction.",
+        "description": "Update the traveler's trip profile based on conversation extraction. For array fields (likes, avoid), always send the COMPLETE current list — read the existing values from the state above and include them alongside any new additions or removals. Never send only the new item.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -64,7 +64,7 @@ TOOL_GENERATE_COMPARISON_MATRIX = {
     "type": "function",
     "function": {
         "name": "generate_comparison_matrix",
-        "description": "Generate a comparative matrix for the shortlisted destinations.",
+        "description": "Generate a comparative matrix for the shortlisted destinations. Always include ALL existing rows from the current state above plus any new rows — never send only the new criterion. The full matrix must be sent every time this tool is called.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -100,9 +100,43 @@ TOOL_GENERATE_COMPARISON_MATRIX = {
 # Orchestrator
 # ---------------------------------------------------------------------------
 
+MAX_HISTORY_TURNS = 4  # arbitrary-but-reasonable starting point — tune from live testing
+
+
 class AgentOrchestrator:
     def __init__(self):
         self.client = get_groq_client()
+
+    def _filter_history(self, history: list) -> list:
+        """Strip tool infrastructure from history before sending to the LLM.
+
+        Keeps only user messages and plain assistant text replies — the chat
+        as the user sees it. Tool call messages and tool result messages carry
+        no information the current state JSON doesn't already capture.
+        """
+        return [
+            m for m in history
+            if m.get("role") != "tool" and not m.get("tool_calls")
+        ]
+
+    def _prune_history(self, history: list) -> list:
+        """Trim conversation history to the last N complete turns before sending to the LLM.
+
+        Slices on user-message boundaries only, so a tool_calls/tool message pair is
+        never split (which would trigger a Groq 400 in place of the 413 this fixes).
+        Always retains index 0 — the onboarding-summary opening message — even when
+        it falls outside the retained window, since it carries high signal for the
+        whole session.
+        """
+        turn_starts = [i for i, m in enumerate(history) if m.get("role") == "user"]
+        if len(turn_starts) <= MAX_HISTORY_TURNS:
+            return history
+
+        cutoff = turn_starts[-MAX_HISTORY_TURNS]
+        pruned = history[cutoff:]
+        if cutoff > 0:
+            pruned = [history[0]] + pruned
+        return pruned
 
     def _get_tools_for_mode(self, mode: str) -> list:
         """Return tools appropriate for the current mode."""
@@ -182,11 +216,17 @@ class AgentOrchestrator:
 
             for item in incoming:
                 key = item["name"].lower()
+                existing = candidates_dict.get(key)
+
+                # A shortlisted destination is already confirmed — don't let the model
+                # spend one of its 3 suggestion slots re-nominating it.
+                if existing and existing.status == "shortlisted":
+                    continue
+
                 # Server resolves photo URL
                 photo_url = resolve_destination_photo(item["name"], item.get("region"))
-                
+
                 # Preserve existing status and details to avoid demoting shortlisted candidates
-                existing = candidates_dict.get(key)
                 existing_status = existing.status if existing else "suggested"
                 existing_best_for = existing.best_for if existing else None
                 existing_seasonal_note = existing.seasonal_note if existing else None
@@ -242,6 +282,7 @@ class AgentOrchestrator:
         plan = current_plan
         tools_for_mode = self._get_tools_for_mode(plan.mode)
         new_messages = []
+        pruned_history = self._filter_history(self._prune_history(conversation_history))
 
         # --- CALL 1: LLM reasons and generates tool calls ---
         plan_dict = plan.model_dump()
@@ -251,9 +292,9 @@ class AgentOrchestrator:
         if plan.mode == "explore":
             active_count = len([c for c in plan.candidates if c.status == "suggested"])
             if active_count < 3:
-                system_msg += f"\n\nCRITICAL: You currently have {active_count} 'suggested' candidates. You MUST suggest {3 - active_count} or more new destinations THIS TURN. If you are also updating the profile, you MUST perform both actions in this single response."
+                system_msg += f"\n\nNote: there are currently only {active_count} active suggested destination(s). You MUST include new candidate suggestions in your response this turn so the list of active candidates stays above 3."
             
-        messages = [{"role": "system", "content": system_msg}] + conversation_history
+        messages = [{"role": "system", "content": system_msg}] + pruned_history
 
         try:
             response = self._call_llm(
@@ -310,7 +351,7 @@ class AgentOrchestrator:
             # --- CALL 2: LLM observes tool results and responds ---
             plan_dict_updated = plan.model_dump()
             system_msg_updated = SystemPrompts.get_prompt_sprint4(plan_dict_updated, plan.mode)
-            messages_with_results = [{"role": "system", "content": system_msg_updated}] + conversation_history + new_messages
+            messages_with_results = [{"role": "system", "content": system_msg_updated}] + pruned_history + new_messages
 
             try:
                 response_2 = self._call_llm(
