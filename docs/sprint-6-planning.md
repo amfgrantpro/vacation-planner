@@ -1,4 +1,4 @@
-# **Sprint 6 Planning (WIP)**
+# **Sprint 6 Planning**
 
 ## **1\. Executive Alignment**
 
@@ -62,7 +62,7 @@ In Sprint 5, we fixed the null calls, but there are still issues and I cannot de
 
 ## **3\. Ideation**
 
-The following ideas are for solution discussion purposes. This section does NOT represent a selection of items for this Sprint. 
+The following ideas are for solution discussion purposes. This section does NOT represent a selection of items for this Sprint.
 
 ### Problem: Token limit failures on long sessions
 
@@ -177,9 +177,9 @@ Two threads run in parallel this sprint:
 
 **Current status**:
 
-1. Planning is in progress (WIP). Awaiting PM review and approval.  
-2. Once approved, the `Sprint 6 Spec` will be written.  
-3. The sprint is not yet ready for implementation.
+1. Planning is complete. The PM has approved the Sprint 6 Spec.  
+2. The `Sprint 6 Spec` has been written and approved: `sprint-6-spec.md`.  
+3. The sprint is ready for implementation.
 
 **Decisions aligned between PM & Code-Agent**:
 
