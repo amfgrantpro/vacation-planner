@@ -32,12 +32,12 @@ export function ShortlistCard({
 
   return (
     <article
-      className={`flex flex-col overflow-hidden rounded-3xl border bg-card shadow-card transition-all duration-300 ${
+      className={`flex flex-col overflow-hidden rounded-3xl border bg-card shadow-card ${
         winner ? 'border-ocean-deep/30 ring-2 ring-ocean-deep/15' : 'border-border/70'
       }`}
     >
       {/* Photo */}
-      <div className="relative h-64 overflow-hidden shrink-0">
+      <div className="relative h-64 overflow-hidden">
         <img
           src={candidate.photo_url || GENERIC_FALLBACK_URL}
           alt={candidate.name}
@@ -46,11 +46,11 @@ export function ShortlistCard({
           }}
           className="size-full object-cover"
         />
-        <div className="absolute left-4 top-4 rounded-full bg-cream-overlay px-2.5 py-1 text-[10.5px] font-medium uppercase tracking-[0.12em] text-ocean-deep backdrop-blur">
+        <div className="absolute left-4 top-4 rounded-full bg-cream/90 px-2.5 py-1 text-[10.5px] font-medium uppercase tracking-[0.12em] text-ocean-deep backdrop-blur">
           {candidate.region}
         </div>
         {winner && (
-          <div className="absolute right-4 top-4 rounded-full bg-ocean-deep px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.12em] text-primary-foreground shadow-sm">
+          <div className="absolute right-4 top-4 rounded-full bg-ocean-deep px-3 py-1 text-[10.5px] font-medium uppercase tracking-[0.12em] text-primary-foreground">
             your pick
           </div>
         )}
@@ -75,10 +75,10 @@ export function ShortlistCard({
 
         {/* Best for */}
         {(candidate.best_for || isEnriching) && (
-          <div className="flex items-start gap-2 rounded-xl bg-sage-bg px-3.5 py-2.5">
+          <div className="flex items-start gap-2 rounded-xl bg-sage/25 px-3.5 py-2.5">
             <Sparkles className="mt-0.5 size-3.5 shrink-0 text-[oklch(0.4_0.07_155)]" />
             <p className="font-sans text-[12.5px] leading-relaxed text-foreground/85">
-              <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-[oklch(0.4_0.07_155)] font-semibold">Best for · </span>
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-[oklch(0.4_0.07_155)]">Best for · </span>
               {candidate.best_for || <span className="italic text-muted-foreground/70">Analysing…</span>}
             </p>
           </div>
@@ -86,17 +86,17 @@ export function ShortlistCard({
 
         {/* Seasonal note */}
         {(candidate.seasonal_note || isEnriching) && (
-          <div className="flex items-start gap-2 rounded-xl bg-sun-bg-soft px-3.5 py-2.5">
+          <div className="flex items-start gap-2 rounded-xl bg-sun/15 px-3.5 py-2.5">
             <CalendarRange className="mt-0.5 size-3.5 shrink-0 text-[oklch(0.45_0.13_70)]" />
             <p className="font-sans text-[12.5px] leading-relaxed text-foreground/85">
-              <span className="font-semibold text-[oklch(0.45_0.13_70)]">In season: </span>
+              <span className="font-medium text-[oklch(0.45_0.13_70)]">In season: </span>
               {candidate.seasonal_note || <span className="italic text-muted-foreground/70">Analysing…</span>}
             </p>
           </div>
         )}
 
         {/* Comparison rows */}
-        <div className="divide-y divide-border/70 rounded-xl border border-border/70 bg-cream-soft overflow-hidden">
+        <div className="divide-y divide-border/70 rounded-xl border border-border/70 bg-cream/50">
           {comparisonMatrix && comparisonMatrix.length > 0 ? (
             comparisonMatrix.map((row, idx) => {
               const criterion = row.criterion ?? Object.keys(row)[0];
@@ -109,8 +109,8 @@ export function ShortlistCard({
               return (
                 <div key={idx} className="grid grid-cols-[150px_1fr] items-start gap-3 px-4 py-2.5">
                   <div className="flex items-center gap-2 text-muted-foreground shrink-0">
-                    <span className="text-ocean-deep/80 shrink-0">{getIconForCriterion(criterion)}</span>
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.12em] leading-tight">{criterion}</span>
+                    <span className="text-ocean-deep/80">{getIconForCriterion(criterion)}</span>
+                    <span className="text-[12px] font-medium uppercase tracking-[0.1em]">{criterion}</span>
                   </div>
                   <div
                     className={`font-sans text-[13px] leading-snug ${
@@ -142,8 +142,8 @@ export function ShortlistCard({
 
         {/* Action Button */}
         {winner ? (
-          <div className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sun-glow via-coral-glow to-teal-soft px-4 py-3.5 font-serif text-[16px] font-semibold text-ocean-deep shadow-sm">
-            <Sparkles className="size-4 text-coral animate-pulse" />
+          <div className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sun/30 via-coral/15 to-teal-soft px-4 py-3.5 font-serif text-[16px] font-semibold text-ocean-deep">
+            <Sparkles className="size-4 text-coral" />
             I'm going to go to there!
           </div>
         ) : (

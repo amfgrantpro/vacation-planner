@@ -18,11 +18,11 @@ export function RemovedTray({ items, onUnremove }: RemovedTrayProps) {
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between px-5 py-3.5 text-left"
       >
-        <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground font-sans">
+        <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
           Removed ({items.length})
         </span>
         <ChevronDown
-          className={`size-4 text-muted-foreground transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          className={`size-4 text-muted-foreground transition ${open ? 'rotate-180' : ''}`}
         />
       </button>
 

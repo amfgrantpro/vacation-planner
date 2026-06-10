@@ -9,7 +9,7 @@ class TripProfile(BaseModel):
     when: Optional[str] = None       # e.g., "September", "flexible"
     duration: Optional[str] = None   # e.g., "1 week", "flexible"
     budget: Optional[str] = None     # e.g., "mid-range", "luxury"
-    vacation_type: Optional[str] = None
+    vacation_type: List[str] = Field(default_factory=list)
     likes: List[str] = Field(default_factory=list)
     avoid: List[str] = Field(default_factory=list)
 

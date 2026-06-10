@@ -6,11 +6,12 @@ import { TripProfileComponent } from './components/TripProfileComponent';
 import { CandidateArea } from './components/CandidateArea';
 import { LandingScreen } from './components/LandingScreen';
 import { useAgent } from './hooks/useAgent';
-import type { VacationPlan, Mode, RejectedCandidate, RejectReason } from './types';
+import type { VacationPlan, Mode, RejectedCandidate, RejectReason, TripProfile } from './types';
 
 function App() {
   const { messages, plan, isLoading, uiState, updateUiState, sendMessage } = useAgent();
   const [rejectedCandidates, setRejectedCandidates] = useState<RejectedCandidate[]>([]);
+  const [pendingProfileOverride, setPendingProfileOverride] = useState<TripProfile | null>(null);
 
   // Check if session has started
   const sessionStarted = messages.length > 0 || plan !== null;
@@ -67,6 +68,12 @@ function App() {
     sendMessage(`Tell me more about ${destination}`, undefined, rejectedCandidates);
   };
 
+  // handleChatSend: includes any pending profile override then clears it
+  const handleChatSend = (msg: string) => {
+    sendMessage(msg, undefined, rejectedCandidates, undefined, pendingProfileOverride);
+    setPendingProfileOverride(null);
+  };
+
   const handleRejectCandidate = (name: string, reason: RejectReason) => {
     setRejectedCandidates((prev) => {
       if (prev.some((r) => r.name.toLowerCase() === name.toLowerCase())) return prev;
@@ -111,7 +118,7 @@ function App() {
       when: null,
       duration: null,
       budget: null,
-      vacation_type: null,
+      vacation_type: [],
       likes: [],
       avoid: [],
     },
@@ -131,7 +138,7 @@ function App() {
       <section className="w-[35%] min-w-[420px] max-w-[520px] shrink-0 h-full">
         <ChatInterface
           messages={messages}
-          onSendMessage={(msg) => sendMessage(msg, undefined, rejectedCandidates)}
+          onSendMessage={handleChatSend}
           isLoading={isLoading}
         />
       </section>
@@ -140,7 +147,10 @@ function App() {
       <main className="flex-1 h-full overflow-y-auto bg-background">
         <div className="mx-auto max-w-[1180px] px-10 py-10 space-y-8">
           {/* Trip Profile - always visible */}
-          <TripProfileComponent profile={currentPlan.trip_profile} />
+          <TripProfileComponent
+            profile={currentPlan.trip_profile}
+            onProfileChange={setPendingProfileOverride}
+          />
 
           {/* Candidate Area - changes based on mode */}
           <CandidateArea

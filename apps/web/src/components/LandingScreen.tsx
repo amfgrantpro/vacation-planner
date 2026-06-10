@@ -22,7 +22,7 @@ export function LandingScreen({ onStartSession }: LandingScreenProps) {
     when: when !== 'whenever' ? when : null,
     duration: duration !== 'however long' ? duration : null,
     budget: budget !== 'not important for now' ? budget : null,
-    vacation_type: vacationType !== 'anything' ? vacationType : null,
+    vacation_type: vacationType !== 'anything' ? [vacationType] : [],
     likes: [],
     avoid: [],
   };
@@ -63,7 +63,7 @@ export function LandingScreen({ onStartSession }: LandingScreenProps) {
       <div className="mx-auto grid max-w-[1320px] grid-cols-1 md:grid-cols-2 gap-14 px-10 pt-16 flex-1 items-start">
         {/* LEFT COLUMN */}
         <section className="flex flex-col items-start">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-sun-badge px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-[oklch(0.4_0.12_70)] animate-fade-in">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-sun/25 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.14em] text-[oklch(0.4_0.12_70)] animate-fade-in">
             <Sparkles className="size-3" /> A new way to plan
           </div>
 
@@ -83,7 +83,7 @@ export function LandingScreen({ onStartSession }: LandingScreenProps) {
                 <select
                   value={travelers}
                   onChange={(e) => setTravelers(e.target.value)}
-                  className="appearance-none cursor-pointer rounded-full pl-3 pr-7 py-0.5 font-serif text-[18px] font-medium transition focus:outline-none bg-teal-soft text-ocean-deep ring-1 ring-ocean-ring hover:bg-teal-soft-hover"
+                  className="appearance-none cursor-pointer rounded-full pl-3 pr-7 py-0.5 font-serif text-[18px] font-medium transition focus:outline-none bg-teal-soft text-ocean-deep ring-1 ring-ocean/20 hover:bg-teal-soft/80"
                 >
                   <option value="solo traveller">solo traveller</option>
                   <option value="a couple">a couple</option>
@@ -102,7 +102,7 @@ export function LandingScreen({ onStartSession }: LandingScreenProps) {
                 onChange={(e) => setOrigin(e.target.value)}
                 className={`mx-1 inline-block align-baseline rounded-full px-3 py-0.5 font-serif text-[18px] font-medium transition focus:outline-none w-28 text-center ${
                   origin.trim()
-                    ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean-ring'
+                    ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean/20'
                     : 'border border-border bg-card text-foreground hover:bg-cream'
                 }`}
               />
@@ -116,7 +116,7 @@ export function LandingScreen({ onStartSession }: LandingScreenProps) {
                   onChange={(e) => setWhen(e.target.value)}
                   className={`appearance-none cursor-pointer rounded-full pl-3 pr-7 py-0.5 font-serif text-[18px] font-medium transition focus:outline-none ${
                     when !== 'whenever'
-                      ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean-ring'
+                      ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean/20'
                       : 'border border-border bg-card text-foreground hover:bg-cream'
                   }`}
                 >
@@ -144,7 +144,7 @@ export function LandingScreen({ onStartSession }: LandingScreenProps) {
                   onChange={(e) => setDuration(e.target.value)}
                   className={`appearance-none cursor-pointer rounded-full pl-3 pr-7 py-0.5 font-serif text-[18px] font-medium transition focus:outline-none ${
                     duration !== 'however long'
-                      ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean-ring'
+                      ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean/20'
                       : 'border border-border bg-card text-foreground hover:bg-cream'
                   }`}
                 >
@@ -163,13 +163,13 @@ export function LandingScreen({ onStartSession }: LandingScreenProps) {
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               onClick={() => handleStartSession('destinations')}
-              className="inline-flex h-11 items-center gap-2 rounded-full border border-ocean-deep-border bg-cream px-5 font-sans text-[14px] font-medium text-ocean-deep transition hover:bg-ocean-deep hover:text-primary-foreground shadow-sm"
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-ocean-deep/15 bg-cream px-5 font-sans text-[14px] font-medium text-ocean-deep transition hover:bg-ocean-deep hover:text-primary-foreground shadow-sm"
             >
               <MapPin className="size-4" /> I already have destinations in mind
             </button>
             <button
               onClick={() => handleStartSession('inspire')}
-              className="inline-flex h-11 items-center gap-2 rounded-full border border-ocean-deep-border bg-cream px-5 font-sans text-[14px] font-medium text-ocean-deep transition hover:bg-ocean-deep hover:text-primary-foreground shadow-sm"
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-ocean-deep/15 bg-cream px-5 font-sans text-[14px] font-medium text-ocean-deep transition hover:bg-ocean-deep hover:text-primary-foreground shadow-sm"
             >
               <Lightbulb className="size-4" /> Inspire me where to go
             </button>
@@ -189,7 +189,7 @@ export function LandingScreen({ onStartSession }: LandingScreenProps) {
                     onChange={(e) => setVacationType(e.target.value)}
                     className={`appearance-none cursor-pointer rounded-full pl-3 pr-7 py-0.5 font-serif text-[17px] font-medium transition focus:outline-none ${
                       vacationType !== 'anything'
-                        ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean-ring'
+                        ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean/20'
                         : 'border border-border bg-card text-muted-foreground hover:bg-cream'
                     }`}
                   >
@@ -212,7 +212,7 @@ export function LandingScreen({ onStartSession }: LandingScreenProps) {
                     onChange={(e) => setBudget(e.target.value)}
                     className={`appearance-none cursor-pointer rounded-full pl-3 pr-7 py-0.5 font-serif text-[17px] font-medium transition focus:outline-none ${
                       budget !== 'not important for now'
-                        ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean-ring'
+                        ? 'bg-teal-soft text-ocean-deep ring-1 ring-ocean/20'
                         : 'border border-border bg-card text-muted-foreground hover:bg-cream'
                     }`}
                   >
@@ -232,7 +232,7 @@ export function LandingScreen({ onStartSession }: LandingScreenProps) {
         <section className="space-y-4 w-full">
           <TripProfileComponent profile={currentProfile} />
 
-          <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-card-wash p-10 text-center shadow-sm">
+          <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center shadow-sm">
             <div className="flex size-14 items-center justify-center rounded-full bg-teal-soft text-ocean-deep">
               <Compass className="size-6 text-ocean-deep" />
             </div>
@@ -249,7 +249,7 @@ export function LandingScreen({ onStartSession }: LandingScreenProps) {
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
-                  className="aspect-[3/4] rounded-xl border border-dashed border-border bg-muted-soft"
+                  className="aspect-[3/4] rounded-xl border border-dashed border-border bg-muted/40"
                 />
               ))}
             </div>

@@ -24,7 +24,7 @@ TOOL_UPDATE_TRIP_PROFILE = {
                 "when": {"type": ["string", "null"]},
                 "duration": {"type": ["string", "null"]},
                 "budget": {"type": ["string", "null"]},
-                "vacation_type": {"type": ["string", "null"]},
+                "vacation_type": {"type": ["array", "null"], "items": {"type": "string"}, "description": "List of vacation style descriptors (e.g. ['beach', 'adventure', 'city break']). Always send the COMPLETE current list including existing values."},
                 "likes": {"type": ["array", "null"], "items": {"type": "string"}},
                 "avoid": {"type": ["array", "null"], "items": {"type": "string"}},
             },
@@ -181,8 +181,13 @@ class AgentOrchestrator:
         which violates the tool schema's 'type: string' constraint and triggers a
         Pydantic validation error on the server. Removing these keys before application
         preserves existing plan values and prevents the 400 error.
+
+        Also defensively coerces vacation_type to a list if the model sends a bare string.
         """
-        return {k: v for k, v in args.items() if v is not None}
+        cleaned = {k: v for k, v in args.items() if v is not None}
+        if "vacation_type" in cleaned and isinstance(cleaned["vacation_type"], str):
+            cleaned["vacation_type"] = [cleaned["vacation_type"]] if cleaned["vacation_type"] else []
+        return cleaned
 
     def _apply_tool_call(self, tool_name: str, args: dict, plan: VacationPlan) -> tuple[VacationPlan, str]:
         """

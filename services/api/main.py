@@ -24,6 +24,7 @@ class ChatRequest(BaseModel):
     session_id: str
     ui_state: Optional[UiState] = None  # Optional for backward compatibility with prototype
     onboarding_profile: Optional[TripProfile] = None
+    profile_override: Optional[TripProfile] = None  # Inline profile edits from the Trip Profile panel
 
 
 class ChatResponse(BaseModel):
@@ -61,6 +62,16 @@ async def chat(request: ChatRequest):
                 if value not in (None, [], ""):
                     setattr(session.plan.trip_profile, field, value)
 
+        # Apply profile_override on every turn (not gated to turn 1)
+        if request.profile_override:
+            incoming = request.profile_override.model_dump(exclude_none=True)
+            for field, value in incoming.items():
+                if isinstance(value, list):
+                    if len(value) > 0:
+                        setattr(session.plan.trip_profile, field, value)
+                elif value not in (None, ""):
+                    setattr(session.plan.trip_profile, field, value)
+
         session.history.append({"role": "user", "content": request.message})
 
         # State reconciliation: sync frontend UI state with backend plan
@@ -90,6 +101,7 @@ async def chat(request: ChatRequest):
                     r.name.lower().strip(): r.reason
                     for r in request.ui_state.rejected_candidates
                 }
+                candidates_to_remove = []
                 for candidate in session.plan.candidates:
                     key = candidate.name.lower().strip()
                     if key in rejected_lower:
@@ -98,15 +110,15 @@ async def chat(request: ChatRequest):
                             candidate.status = "rejected"
                             candidate.rejection_reason = rejected_lower[key]
                     elif candidate.status == "rejected" and key not in rejected_lower:
-                        # Un-removed: restore to suggested
-                        candidate.status = "suggested"
-                        candidate.rejection_reason = None
+                        # Un-rejected: remove from plan entirely so the agent must re-suggest
+                        candidates_to_remove.append(candidate)
+                for c in candidates_to_remove:
+                    session.plan.candidates.remove(c)
             else:
-                # Empty rejected list means un-remove all previously rejected candidates
-                for candidate in session.plan.candidates:
-                    if candidate.status == "rejected":
-                        candidate.status = "suggested"
-                        candidate.rejection_reason = None
+                # Empty list = clear all rejected; remove them from the plan
+                session.plan.candidates = [
+                    c for c in session.plan.candidates if c.status != "rejected"
+                ]
 
         try:
             structured, updated_plan, new_messages = agent.run_turn(session.history, session.plan)

@@ -15,7 +15,7 @@ export interface TripProfile {
   when: string | null;
   duration: string | null;
   budget: string | null;
-  vacation_type: string | null;
+  vacation_type: string[] | null;
   likes: string[];
   avoid: string[];
 }

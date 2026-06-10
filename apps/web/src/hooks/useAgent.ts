@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import type { VacationPlan, ChatMessage, UiState, RejectedCandidate, TripProfile } from '../types';
 
 
@@ -14,6 +14,9 @@ export function useAgent() {
         rejected_candidates: [],
     });
 
+    const uiStateRef = useRef<UiState>(uiState);
+    uiStateRef.current = uiState;
+
     const updateUiState = (updates: Partial<UiState>) => {
         setUiState((prev) => ({ ...prev, ...updates }));
     };
@@ -22,14 +25,15 @@ export function useAgent() {
         content: string,
         overrideUiState?: UiState,
         rejectedCandidates: RejectedCandidate[] = [],
-        onboardingProfile?: TripProfile
+        onboardingProfile?: TripProfile,
+        profileOverride?: TripProfile | null,
     ) => {
         const newMessages: ChatMessage[] = [...messages, { role: 'user', content }];
         setMessages(newMessages);
         setIsLoading(true);
 
         // Use override state if provided (for immediate state transitions), otherwise use current state
-        const stateToSend = overrideUiState || uiState;
+        const stateToSend = overrideUiState || uiStateRef.current;
 
         try {
             const res = await fetch('http://localhost:8000/chat', {
@@ -43,6 +47,7 @@ export function useAgent() {
                         rejected_candidates: rejectedCandidates,
                     },
                     onboarding_profile: onboardingProfile ?? null,
+                    profile_override: profileOverride ?? null,
                 }),
             });
 

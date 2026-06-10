@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus, MessageCircle, X } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@radix-ui/react-popover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { DestinationCandidate, RejectReason } from '../types';
 
 const GENERIC_FALLBACK_URL =
@@ -28,7 +28,7 @@ export function CandidateCard({
   const [popoverOpen, setPopoverOpen] = useState(false);
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-card transition hover:shadow-soft duration-300">
+    <article className="group relative flex flex-col overflow-hidden rounded-3xl border border-border/70 bg-card shadow-card transition hover:shadow-soft">
       <div className="relative h-48 overflow-hidden">
         <img
           src={candidate.photo_url || GENERIC_FALLBACK_URL}
@@ -38,7 +38,7 @@ export function CandidateCard({
           }}
           className="size-full object-cover transition duration-500 group-hover:scale-[1.03]"
         />
-        <div className="absolute left-3 top-3 rounded-full bg-cream-overlay px-2.5 py-1 text-[10.5px] font-medium uppercase tracking-[0.12em] text-ocean-deep backdrop-blur">
+        <div className="absolute left-3 top-3 rounded-full bg-cream/90 px-2.5 py-1 text-[10.5px] font-medium uppercase tracking-[0.12em] text-ocean-deep backdrop-blur">
           {candidate.region}
         </div>
 
@@ -51,7 +51,7 @@ export function CandidateCard({
             <PopoverTrigger asChild>
               <button
                 aria-label={`Remove ${candidate.name}`}
-                className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-full bg-cream-overlay text-ocean-deep/70 backdrop-blur opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-primary-foreground"
+                className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-full bg-cream/90 text-ocean-deep/70 backdrop-blur transition hover:bg-destructive hover:text-destructive-foreground"
               >
                 <X className="size-3.5" />
               </button>
@@ -59,7 +59,7 @@ export function CandidateCard({
             <PopoverContent
               align="end"
               sideOffset={6}
-              className="z-50 w-60 rounded-2xl border border-border/70 bg-card p-3 shadow-soft"
+              className="w-60 p-3"
             >
               <div className="mb-2 text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
                 Why remove?
@@ -72,7 +72,7 @@ export function CandidateCard({
                       setPopoverOpen(false);
                       onReject(reason);
                     }}
-                    className="rounded-full border border-border bg-card px-2.5 py-1 font-sans text-[12px] text-foreground transition hover:bg-ocean-deep hover:text-primary-foreground hover:border-ocean-deep"
+                    className="rounded-full border border-border bg-card px-2.5 py-1 font-sans text-[12px] text-foreground transition hover:bg-ocean-deep hover:text-primary-foreground"
                   >
                     {reason}
                   </button>
@@ -112,10 +112,10 @@ export function CandidateCard({
             disabled={shortlistFull && !isInShortlist}
             className={`inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border font-sans text-[12.5px] font-medium transition ${
               isInShortlist
-                ? 'bg-ocean-deep border-ocean-deep text-primary-foreground hover:bg-ocean-deep-dim shadow-card'
+                ? 'bg-ocean-deep border-ocean-deep text-primary-foreground hover:bg-ocean shadow-card'
                 : shortlistFull
                   ? 'border-border bg-muted text-muted-foreground/60 cursor-not-allowed'
-                  : 'border-ocean-deep-border bg-cream text-ocean-deep hover:bg-ocean-deep hover:text-primary-foreground'
+                  : 'border-ocean-deep/15 bg-cream text-ocean-deep hover:bg-ocean-deep hover:text-primary-foreground'
             }`}
           >
             <Plus className="size-3.5" />

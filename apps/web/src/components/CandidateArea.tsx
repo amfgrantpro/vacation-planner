@@ -197,7 +197,7 @@ export function CandidateArea({
         {/* Heading */}
         <div className="flex items-baseline justify-between">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full bg-ocean-deep-bg px-2.5 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-ocean-deep font-sans">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-ocean-deep/15 px-2.5 py-1 text-[10.5px] font-medium uppercase tracking-[0.14em] text-ocean-deep font-sans">
               <Check className="size-3" /> decided
             </div>
             <h2 className="mt-2 font-serif text-2xl font-semibold tracking-tight text-foreground">
@@ -275,7 +275,7 @@ function ShortlistBar({ items, capacity, onRemove, onCompare, canCompare }: Shor
               <span className="font-sans text-[12.5px] font-medium text-foreground">{slot.name}</span>
               <button
                 onClick={() => onRemove(slot.name)}
-                className="flex size-5 items-center justify-center rounded-full text-muted-foreground transition hover:bg-destructive-bg hover:text-destructive"
+                className="flex size-5 items-center justify-center rounded-full text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
                 aria-label={`Remove ${slot.name}`}
               >
                 <X className="size-3" />
@@ -284,7 +284,7 @@ function ShortlistBar({ items, capacity, onRemove, onCompare, canCompare }: Shor
           ) : (
             <div
               key={i}
-              className="flex h-9 flex-1 min-w-[80px] items-center justify-center rounded-full border border-dashed border-border bg-muted-soft text-[11.5px] italic text-muted-foreground/70"
+              className="flex h-9 flex-1 min-w-[80px] items-center justify-center rounded-full border border-dashed border-border bg-muted/40 text-[11.5px] italic text-muted-foreground/70"
             >
               empty slot
             </div>
@@ -347,7 +347,7 @@ function NotQuiteRightBar({
           </button>
         </div>
         {showReconsider && onBackToShortlist && (
-          <div className="flex items-center justify-between gap-3 rounded-xl bg-teal-soft-muted px-4 py-3">
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-teal-soft/60 px-4 py-3">
             <div>
               <div className="font-serif text-[14.5px] font-semibold leading-tight text-ocean-deep">
                 Reconsider your options
