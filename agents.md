@@ -33,7 +33,10 @@ To simulate a Product Team, we follow a strict feedback-driven partnership:
 
 
 ### **The Workflow Loop**
-1.  **Planning-First**: The PM and Agent collaborate in a planning document (e.g., `docs/sprint-X-planning.md`) to align on goals and priorities.
+1.  **Planning-First**: The PM and Agent collaborate in a planning document (e.g., `docs/sprint-X-planning.md`) to align on goals and priorities. We work AGILE:
+  * Planning may bring up issues from testing and ideate on possible solutions. This does NOT mean that they are high priority or included in the sprint. Do not read into their inclusion as being anything more than 'they came up in testing'.
+  * ONLY the ideas listed in the current sprint are in focus for the next build.
+  * Future roadmaps are a 'best guess' but are not set.
 2.  **Spec-Next**: Once Planning is complete (i.e. the PM approves of the plan), the Agent writes a detailed Implementation Spec (e.g., `docs/sprint-X-spec.md`) for human review.
 3.  **PM Review**: The PM reviews the spec to catch missing requirements or design flaws.
 4.  **Code-Changes**: The Agent implements the logic only after the spec is approved.
