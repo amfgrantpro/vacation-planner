@@ -169,6 +169,38 @@ Covered by the `print(...)` calls in §3.1 above — no separate code path neede
 
 This is backend console logging only — no new API fields, no debug-panel changes.
 
+### 3.3 Diagnostic Forcing: `tool_choice="required"` when candidates are low
+
+Per planning §7 decision 3, forcing `tool_choice` for candidate refilling was deferred entirely. Revisiting it now, repurposed primarily as a **stress test for §3.1**: forcing Call 1 to make *some* tool call when candidates are low increases the number of tool-calling attempts during testing, which increases the chance of actually observing `tool_use_failed` and confirming the retry-with-nudge recovers from it — rather than waiting for it to occur naturally and rarely.
+
+**Design**: reuse the *same* `active_count < 3` condition that already triggers the existing text note (`orchestrator.py:296-300`) — rather than introducing a second threshold with a second mechanism, the one condition now does both: append the text note **and** escalate Call 1's `tool_choice` from `"auto"` to `"required"`.
+
+#### [MODIFY] `services/api/agent/orchestrator.py` — `run_turn` (currently `orchestrator.py:296-308`)
+
+```python
+# Inject dynamic instruction to ensure 3 active (non-rejected) candidates in explore mode
+call_1_tool_choice = "auto" if tools_for_mode else None
+if plan.mode == "explore":
+    active_count = len([c for c in plan.candidates if c.status == "suggested"])
+    if active_count < 3:
+        system_msg += f"\n\nNote: there are currently only {active_count} active suggested destination(s). You MUST include new candidate suggestions in your response this turn so the list of active candidates stays above 3."
+        if tools_for_mode:
+            call_1_tool_choice = "required"
+
+messages = [{"role": "system", "content": system_msg}] + pruned_history
+
+try:
+    response = self._call_llm(
+        messages=messages,
+        tools=tools_for_mode if tools_for_mode else None,
+        tool_choice=call_1_tool_choice,
+    )
+```
+
+**Scope note**: `tool_choice="required"` forces the model to call *some* tool on Call 1 — it does not target `suggest_candidates` specifically. This sprint does not claim it as a validated fix for the candidate-refill UX gap (planning §7 decision 3's original motivation); its purpose here is to manufacture more tool-calling attempts for §3.1's stress test, under the same condition that already asks the model to refill candidates in text. Whether it *also* measurably improves candidate-refill reliability is something to observe during testing, not something this spec designs for — see §6.
+
+**Removal criteria** (unchanged from the original deferred note): trivial to remove — a one-line revert of `call_1_tool_choice`. If it destabilises tool-calling further (more `tool_use_failed`, not less), pull it.
+
 ---
 
 ## 4. Phase 2: Prompt Proactivity & Backup Model
@@ -257,6 +289,7 @@ No `.env` file in this repo overrides `GROQ_FALLBACK_MODEL`, so the new default 
 ### Phase 1: Tool-Call Reliability
 - [ ] **1.1** — `orchestrator.py`: add `from groq import BadRequestError`, the `TOOL_FORMAT_NUDGE` constant, and the `_tool_use_failed_generation` helper.
 - [ ] **1.2** — `orchestrator.py`: rewrite `_call_llm` per §3.1 — single retry on `tool_use_failed` with the nudge appended only for the retry call; `[TOOL FORMAT ERROR]` logging on first failure and (if retry fails) on the retry failure; existing rate-limit fallback behaviour unchanged.
+- [ ] **1.3** — `orchestrator.py`: in `run_turn`, reuse the existing `active_count < 3` condition to also escalate Call 1's `tool_choice` from `"auto"` to `"required"` (§3.3) — diagnostic stress test for §3.1's retry path.
 
 ### Phase 2: Prompt Proactivity & Backup Model
 - [ ] **2.1** — `prompt.py`: rename `TEMPLATE_SPRINT4` → `TEMPLATE` and reframe its opening sentence (§4.1).
@@ -268,13 +301,13 @@ No `.env` file in this repo overrides `GROQ_FALLBACK_MODEL`, so the new default 
 
 ---
 
-## 6. Deferred: Forced `tool_choice="required"` for Candidate Refilling
+## 6. Deferred: Forcing a *Specific* Tool (`suggest_candidates`) for Candidate Refilling
 
-Per planning §7 decision 3, this is **not** part of this spec or this build. Recorded here only so the condition for revisiting it is explicit and doesn't get lost:
+§3.3 forces Call 1 to call *some* tool when `active_count < 3`, primarily as a stress test for §3.1's retry path. It does not force `suggest_candidates` specifically — Groq's API also supports `tool_choice={"type": "function", "function": {"name": "..."}}` to force a *named* tool, which would more directly target the candidate-refill UX gap from planning §7 decision 3.
 
-- Revisit only after Phase 1's retry (§3) has been validated in live testing.
-- If pursued: threshold is `active_count < 2` (0 or 1 active `suggested` candidates), applied to the existing dynamic injection in `run_turn` (`orchestrator.py:297-300`) by additionally setting `tool_choice="required"` on Call 1 when that threshold is met.
-- Must be trivial to remove — if it destabilises tool-calling further (e.g. produces more `tool_use_failed` errors by forcing a tool call when the model would rather not), pull it immediately.
+This remains out of scope for this sprint:
+- It's a more invasive, less "trivial to remove" change than §3.3's `"required"`.
+- Whether it's even needed depends on what testing (§7) shows once §3.3 is in place — if forcing *any* tool call is enough to get `suggest_candidates` called when candidates are low, the named-tool version adds complexity without benefit.
 
 No design beyond this is proposed now.
 
@@ -282,17 +315,20 @@ No design beyond this is proposed now.
 
 ## 7. Verification Plan
 
+Both phases are implemented before testing begins, and verified together in a single combined test pass (Phase 1 and Phase 2 headers below group items by what they test, not by separate test sessions).
+
 ### Phase 1
-1. Reproduce a `tool_use_failed` scenario (planning §2 notes this is more likely later in a session and on mode transitions back to Explore). Confirm: server logs show `⚠️ [TOOL FORMAT ERROR] ... failed_generation: ...`; if the retry succeeds, the turn completes normally with no 500 to the frontend.
-2. If a retry-exhausted case occurs naturally, confirm the second log line (`❌ [TOOL FORMAT ERROR] ... failed again after retry`) appears with its own `failed_generation`, and the frontend shows the same "Error connecting to agent" it does today (no regression — just better logs).
+1. Reproduce a `tool_use_failed` scenario (planning §2 notes this is more likely later in a session and on mode transitions back to Explore; §3.3's `tool_choice="required"` escalation increases the odds of seeing this during the combined test). Confirm: server logs show `⚠️ [TOOL FORMAT ERROR] ... failed_generation: ...`; if the retry succeeds, the turn completes normally with no 500 to the frontend.
+2. If a retry-exhausted case occurs, confirm the second log line (`❌ [TOOL FORMAT ERROR] ... failed again after retry`) appears with its own `failed_generation`, and the frontend shows the same "Error connecting to agent" it does today (no regression — just better logs).
 3. Run a normal session with no `tool_use_failed` errors. Confirm no extra LLM calls are made and the nudge message never appears in `session.history` (inspect via network response / server logs).
 4. Confirm the 429 → fallback-model path still works independently (e.g. by temporarily exhausting the primary model's rate limit) — `_call_llm`'s rate-limit branch is unchanged. If `tool_use_failed` happens to occur on the fallback model during this test, confirm it gets the same `⚠️ [TOOL FORMAT ERROR] {fallback_model}...` retry-with-nudge treatment as the primary would (logs should name `fallback_model`, not `primary_model`).
+5. With `active_count < 3`, confirm Call 1's `tool_choice` is `"required"` and observe the resulting error rate. If `tool_use_failed` still occurs frequently even with §3.1's retry in place, that's the signal to revisit the proactive prompt-guidance idea discussed during spec review (extending guideline 3 in `SHARED_GUIDELINES` to name the `<function=...>` text-syntax failure mode directly) — not designed in this spec.
 
 ### Phase 2
-5. Run a fresh Explore session for several turns, volunteering new preferences without explicitly asking for new candidates. Confirm the agent updates the profile and refreshes/adds candidates the same turn it learns something new, rather than waiting to be prompted (planning §2's "had to be prompted explicitly... more than once").
-6. Read the agent's questions across an Explore session — confirm they read as trade-offs ("Would you rather X or Y?" / "Is it more important that... or...?") rather than menus ("Do you like A, B, or C?").
-7. Whenever the 429 fallback triggers organically during testing, note `openai/gpt-oss-120b`'s behaviour re: markdown formatting, comparison matrix completeness, and exposed reasoning, for future reference — no dedicated test session required.
-8. Confirm `grep -rn "SPRINT4\|sprint4" services/api/` returns no results. The rename (`TEMPLATE_SPRINT4` → `TEMPLATE`, `get_prompt_sprint4` → `get_system_prompt`) is purely cosmetic — response content should be unaffected by the rename itself (only by the wording changes in §4.1).
+6. Run a fresh Explore session for several turns, volunteering new preferences without explicitly asking for new candidates. Confirm the agent updates the profile and refreshes/adds candidates the same turn it learns something new, rather than waiting to be prompted (planning §2's "had to be prompted explicitly... more than once").
+7. Read the agent's questions across an Explore session — confirm they read as trade-offs ("Would you rather X or Y?" / "Is it more important that... or...?") rather than menus ("Do you like A, B, or C?").
+8. Whenever the 429 fallback triggers organically during testing, note `openai/gpt-oss-120b`'s behaviour re: markdown formatting, comparison matrix completeness, and exposed reasoning, for future reference — no dedicated test session required.
+9. Confirm `grep -rn "SPRINT4\|sprint4" services/api/` returns no results. The rename (`TEMPLATE_SPRINT4` → `TEMPLATE`, `get_prompt_sprint4` → `get_system_prompt`) is purely cosmetic — response content should be unaffected by the rename itself (only by the wording changes in §4.1).
 
 ---
 

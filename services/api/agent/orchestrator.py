@@ -1,5 +1,6 @@
 import json
 from typing import Optional, List
+from groq import BadRequestError
 from .models import VacationPlan, DestinationCandidate, TripProfile, UiState
 from .prompt import SystemPrompts
 from core.llm import get_groq_client
@@ -102,6 +103,16 @@ TOOL_GENERATE_COMPARISON_MATRIX = {
 
 MAX_HISTORY_TURNS = 4  # arbitrary-but-reasonable starting point — tune from live testing
 
+TOOL_FORMAT_NUDGE = {
+    "role": "system",
+    "content": (
+        "Your previous response attempted to call a tool using invalid text-based "
+        "syntax (e.g. `<function=name>{...}</function>`) instead of the structured "
+        "tool-calling mechanism. Retry now using ONLY the structured tool_calls "
+        "mechanism — do not write a function call as text in your response."
+    ),
+}
+
 
 class AgentOrchestrator:
     def __init__(self):
@@ -148,15 +159,24 @@ class AgentOrchestrator:
             return []  # No tools in decision mode
         return [TOOL_UPDATE_TRIP_PROFILE, TOOL_SUGGEST_CANDIDATES]  # Default to explore
 
+    def _tool_use_failed_generation(self, e: Exception) -> Optional[str]:
+        """Return the `failed_generation` string if `e` is a Groq tool_use_failed 400, else None."""
+        if isinstance(e, BadRequestError) and isinstance(e.body, dict):
+            error = e.body.get("error", {})
+            if error.get("code") == "tool_use_failed":
+                return error.get("failed_generation", "")
+        return None
+
     def _call_llm(self, messages: list, tools: list = None, tool_choice: str = None, json_mode: bool = False):
-        """Primary LLM call with fallback on rate limits."""
+        """Primary LLM call with fallback on rate limits. Either model gets a single
+        same-model retry-with-nudge if it returns a tool_use_failed 400."""
         primary_model = settings.GROQ_PRIMARY_MODEL
         fallback_model = settings.GROQ_FALLBACK_MODEL
 
-        def call_api(model_name):
+        def call_api(model_name, msgs):
             kwargs = {
                 "model": model_name,
-                "messages": messages,
+                "messages": msgs,
             }
             if tools:
                 kwargs["tools"] = tools
@@ -166,12 +186,32 @@ class AgentOrchestrator:
                 kwargs["response_format"] = {"type": "json_object"}
             return self.client.chat.completions.create(**kwargs)
 
+        def call_with_retry(model_name, msgs):
+            """Call `model_name`; on tool_use_failed, retry once on the same model with a format nudge."""
+            try:
+                return call_api(model_name, msgs)
+            except Exception as e:
+                failed_generation = self._tool_use_failed_generation(e)
+                if failed_generation is None:
+                    raise
+                print(f"⚠️  [TOOL FORMAT ERROR] {model_name} emitted a tool call as text "
+                      f"instead of structured tool_calls. Retrying once with a format nudge.\n"
+                      f"failed_generation: {failed_generation}")
+                try:
+                    return call_api(model_name, msgs + [TOOL_FORMAT_NUDGE])
+                except Exception as e2:
+                    retry_failed_generation = self._tool_use_failed_generation(e2)
+                    if retry_failed_generation is not None:
+                        print(f"❌ [TOOL FORMAT ERROR] {model_name} failed again after retry.\n"
+                              f"failed_generation: {retry_failed_generation}")
+                    raise
+
         try:
-            return call_api(primary_model)
+            return call_with_retry(primary_model, messages)
         except Exception as e:
             if "rate_limit_exceeded" in str(e) or "429" in str(e):
                 print(f"⚠️  Rate limit on {primary_model}. Falling back to {fallback_model}...")
-                return call_api(fallback_model)
+                return call_with_retry(fallback_model, messages)
             raise
 
     def _sanitize_args(self, args: dict) -> dict:
@@ -291,21 +331,24 @@ class AgentOrchestrator:
 
         # --- CALL 1: LLM reasons and generates tool calls ---
         plan_dict = plan.model_dump()
-        system_msg = SystemPrompts.get_prompt_sprint4(plan_dict, plan.mode)
+        system_msg = SystemPrompts.get_system_prompt(plan_dict, plan.mode)
         
         # Inject dynamic instruction to ensure 3 active (non-rejected) candidates in explore mode
+        call_1_tool_choice = "auto" if tools_for_mode else None
         if plan.mode == "explore":
             active_count = len([c for c in plan.candidates if c.status == "suggested"])
             if active_count < 3:
                 system_msg += f"\n\nNote: there are currently only {active_count} active suggested destination(s). You MUST include new candidate suggestions in your response this turn so the list of active candidates stays above 3."
-            
+                if tools_for_mode:
+                    call_1_tool_choice = "required"
+
         messages = [{"role": "system", "content": system_msg}] + pruned_history
 
         try:
             response = self._call_llm(
                 messages=messages,
                 tools=tools_for_mode if tools_for_mode else None,
-                tool_choice="auto" if tools_for_mode else None,
+                tool_choice=call_1_tool_choice,
             )
         except Exception as e:
             print(f"LLM call error (Call 1): {e}")
@@ -355,7 +398,7 @@ class AgentOrchestrator:
 
             # --- CALL 2: LLM observes tool results and responds ---
             plan_dict_updated = plan.model_dump()
-            system_msg_updated = SystemPrompts.get_prompt_sprint4(plan_dict_updated, plan.mode)
+            system_msg_updated = SystemPrompts.get_system_prompt(plan_dict_updated, plan.mode)
             messages_with_results = [{"role": "system", "content": system_msg_updated}] + pruned_history + new_messages
 
             try:

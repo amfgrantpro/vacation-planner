@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
     UNSPLASH_ACCESS_KEY: str = ""
     GROQ_PRIMARY_MODEL: str = "llama-3.3-70b-versatile"
-    GROQ_FALLBACK_MODEL: str = "qwen/qwen3-32b"
+    GROQ_FALLBACK_MODEL: str = "openai/gpt-oss-120b"
     
     class Config:
         env_file = [".env", "../.env", "../../.env", "../../../.env"]
