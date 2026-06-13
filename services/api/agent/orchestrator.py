@@ -1,8 +1,9 @@
 import json
+from dataclasses import dataclass
 from typing import Optional, List
 from groq import BadRequestError
 from .models import VacationPlan, DestinationCandidate, TripProfile, UiState
-from .prompt import SystemPrompts
+from .prompt import ExplorePrompts, ComparisonPrompts
 from core.llm import get_groq_client
 from core.config import settings
 from core.image_resolver import resolve_destination_photo
@@ -98,10 +99,42 @@ TOOL_GENERATE_COMPARISON_MATRIX = {
 
 
 # ---------------------------------------------------------------------------
+# Agent Configuration
+# ---------------------------------------------------------------------------
+
+@dataclass
+class AgentConfig:
+    name: str
+    api_key: str
+    prompts: type           # ExplorePrompts or ComparisonPrompts — provides get_system_prompt()
+    tools_by_mode: dict      # {mode: [tool_schema, ...]}
+
+
+EXPLORE_CONFIG = AgentConfig(
+    name="explore",
+    api_key=settings.GROQ_API_KEY,
+    prompts=ExplorePrompts,
+    tools_by_mode={
+        "explore": [TOOL_UPDATE_TRIP_PROFILE, TOOL_SUGGEST_CANDIDATES],
+    },
+)
+
+COMPARISON_CONFIG = AgentConfig(
+    name="comparison",
+    api_key=settings.GROQ_API_KEY_2 or settings.GROQ_API_KEY,
+    prompts=ComparisonPrompts,
+    tools_by_mode={
+        "compare": [TOOL_UPDATE_TRIP_PROFILE, TOOL_GENERATE_COMPARISON_MATRIX],
+        "decision": [],
+    },
+)
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 
-MAX_HISTORY_TURNS = 4  # arbitrary-but-reasonable starting point — tune from live testing
+MAX_HISTORY_TURNS = 5  # increased from 4 after live testing showed the model benefits from more assistant-reply context
 
 TOOL_FORMAT_NUDGE = {
     "role": "system",
@@ -115,8 +148,9 @@ TOOL_FORMAT_NUDGE = {
 
 
 class AgentOrchestrator:
-    def __init__(self):
-        self.client = get_groq_client()
+    def __init__(self, config: AgentConfig):
+        self.config = config
+        self.client = get_groq_client(config.api_key)
 
     def _filter_history(self, history: list) -> list:
         """Strip tool infrastructure from history before sending to the LLM.
@@ -131,33 +165,28 @@ class AgentOrchestrator:
         ]
 
     def _prune_history(self, history: list) -> list:
-        """Trim conversation history to the last N complete turns before sending to the LLM.
+        """Two-pass pruning over already-filtered (user, assistant) history.
 
-        Slices on user-message boundaries only, so a tool_calls/tool message pair is
-        never split (which would trigger a Groq 400 in place of the 413 this fixes).
-        Always retains index 0 — the onboarding-summary opening message — even when
-        it falls outside the retained window, since it carries high signal for the
-        whole session.
+        Pass 1: every user message is retained, in chronological order — the
+        traveler's full expressed preferences stay in context for the whole
+        session, including across an agent handoff on mode change.
+        Pass 2: the last MAX_HISTORY_TURNS user messages additionally retain
+        their assistant replies. Assistant replies from older turns are dropped.
+
+        Expects history that has already passed through _filter_history, so
+        every message is either {"role": "user", ...} or a plain-text
+        {"role": "assistant", ...} (no tool / tool_calls messages).
         """
-        turn_starts = [i for i, m in enumerate(history) if m.get("role") == "user"]
-        if len(turn_starts) <= MAX_HISTORY_TURNS:
+        user_indices = [i for i, m in enumerate(history) if m.get("role") == "user"]
+        if len(user_indices) <= MAX_HISTORY_TURNS:
             return history
 
-        cutoff = turn_starts[-MAX_HISTORY_TURNS]
-        pruned = history[cutoff:]
-        if cutoff > 0:
-            pruned = [history[0]] + pruned
-        return pruned
+        cutoff = user_indices[-MAX_HISTORY_TURNS]
+        return [m for i, m in enumerate(history) if m.get("role") == "user" or i >= cutoff]
 
     def _get_tools_for_mode(self, mode: str) -> list:
-        """Return tools appropriate for the current mode."""
-        if mode == "explore":
-            return [TOOL_UPDATE_TRIP_PROFILE, TOOL_SUGGEST_CANDIDATES]
-        elif mode == "compare":
-            return [TOOL_UPDATE_TRIP_PROFILE, TOOL_GENERATE_COMPARISON_MATRIX]
-        elif mode == "decision":
-            return []  # No tools in decision mode
-        return [TOOL_UPDATE_TRIP_PROFILE, TOOL_SUGGEST_CANDIDATES]  # Default to explore
+        """Return tools appropriate for the current mode, scoped to this agent."""
+        return self.config.tools_by_mode.get(mode, [])
 
     def _tool_use_failed_generation(self, e: Exception) -> Optional[str]:
         """Return the `failed_generation` string if `e` is a Groq tool_use_failed 400, else None."""
@@ -167,9 +196,16 @@ class AgentOrchestrator:
                 return error.get("failed_generation", "")
         return None
 
-    def _call_llm(self, messages: list, tools: list = None, tool_choice: str = None, json_mode: bool = False):
-        """Primary LLM call with fallback on rate limits. Either model gets a single
-        same-model retry-with-nudge if it returns a tool_use_failed 400."""
+    def _call_llm(self, messages: list, tools: list = None, tool_choice: str = None,
+                   json_mode: bool = False, allow_tool_retry: bool = True):
+        """Primary LLM call with fallback on rate limits.
+
+        When allow_tool_retry is True (Call 1), a tool_use_failed 400 gets a single
+        same-model retry with a format-correction nudge. Call 2 (tool_choice="none")
+        passes allow_tool_retry=False: a tool_use_failed there means the model tried
+        to call a tool on the wrong call, which a same-model nudge cannot fix
+        (see sprint-9-planning.md §2) — the failure is logged but not retried.
+        """
         primary_model = settings.GROQ_PRIMARY_MODEL
         fallback_model = settings.GROQ_FALLBACK_MODEL
 
@@ -195,8 +231,10 @@ class AgentOrchestrator:
                 if failed_generation is None:
                     raise
                 print(f"⚠️  [TOOL FORMAT ERROR] {model_name} emitted a tool call as text "
-                      f"instead of structured tool_calls. Retrying once with a format nudge.\n"
-                      f"failed_generation: {failed_generation}")
+                      f"instead of structured tool_calls.\nfailed_generation: {failed_generation}")
+                if not allow_tool_retry:
+                    raise
+                print(f"   Retrying once on {model_name} with a format nudge.")
                 try:
                     return call_api(model_name, msgs + [TOOL_FORMAT_NUDGE])
                 except Exception as e2:
@@ -327,11 +365,11 @@ class AgentOrchestrator:
         plan = current_plan
         tools_for_mode = self._get_tools_for_mode(plan.mode)
         new_messages = []
-        pruned_history = self._filter_history(self._prune_history(conversation_history))
+        pruned_history = self._prune_history(self._filter_history(conversation_history))
 
         # --- CALL 1: LLM reasons and generates tool calls ---
         plan_dict = plan.model_dump()
-        system_msg = SystemPrompts.get_system_prompt(plan_dict, plan.mode)
+        system_msg = self.config.prompts.get_system_prompt(plan_dict, plan.mode)
         
         # Inject dynamic instruction to ensure 3 active (non-rejected) candidates in explore mode
         call_1_tool_choice = "auto" if tools_for_mode else None
@@ -398,7 +436,7 @@ class AgentOrchestrator:
 
             # --- CALL 2: LLM observes tool results and responds ---
             plan_dict_updated = plan.model_dump()
-            system_msg_updated = SystemPrompts.get_system_prompt(plan_dict_updated, plan.mode)
+            system_msg_updated = self.config.prompts.get_system_prompt(plan_dict_updated, plan.mode)
             messages_with_results = [{"role": "system", "content": system_msg_updated}] + pruned_history + new_messages
 
             try:
@@ -406,6 +444,7 @@ class AgentOrchestrator:
                     messages=messages_with_results,
                     tools=tools_for_mode if tools_for_mode else None,
                     tool_choice="none",
+                    allow_tool_retry=False,
                 )
             except Exception as e:
                 print(f"LLM call error (Call 2): {e}")
@@ -414,11 +453,9 @@ class AgentOrchestrator:
             message_2 = response_2.choices[0].message
             text_reply = message_2.content if message_2.content else "I have updated the plan accordingly."
         else:
-            # No tools called; use LLM's original response (save tokens)
-            new_messages.append({
-                "role": "assistant",
-                "content": initial_text,
-            })
+            # No tools called; use LLM's original response (save tokens).
+            # main.py's final session.history.append(...) is the sole writer of
+            # this turn's assistant reply — matches the tool-call branch.
             text_reply = initial_text
 
         return {"text_reply": text_reply, "comparison_matrix": plan.comparison_matrix}, plan, new_messages

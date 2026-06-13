@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from agent.orchestrator import AgentOrchestrator
+from agent.router import get_agent
 from agent.prototype_orchestrator import AgentOrchestrator as PrototypeAgentOrchestrator
 from agent.session import session_manager, prototype_session_manager
 from agent.models import VacationPlan, UiState, DestinationCandidate, TripProfile, RejectedCandidate
@@ -42,7 +42,6 @@ class PrototypeResponse(BaseModel):
     comparison_matrix: Optional[List[dict]] = None
 
 
-agent = AgentOrchestrator()
 prototype_agent = PrototypeAgentOrchestrator()
 
 
@@ -121,6 +120,7 @@ async def chat(request: ChatRequest):
                 ]
 
         try:
+            agent = get_agent(session.plan.mode)
             structured, updated_plan, new_messages = agent.run_turn(session.history, session.plan)
         except Exception as e:
             # If the orchestrator fails (e.g., tool execution error, rate limit, etc.)

@@ -3,6 +3,8 @@ from typing import Optional
 
 class Settings(BaseSettings):
     GROQ_API_KEY: str
+    GROQ_API_KEY_2: str = ""  # second Groq account for the Comparison/Decision agent;
+                              # falls back to GROQ_API_KEY if unset
     OPENAI_API_KEY: str = ""
     UNSPLASH_ACCESS_KEY: str = ""
     GROQ_PRIMARY_MODEL: str = "llama-3.3-70b-versatile"
