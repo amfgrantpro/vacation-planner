@@ -1,4 +1,4 @@
-# **Sprint 8 Planning (WIP)**
+# **Sprint 8 Planning**
 
 ## **1\. Executive Alignment**
 
@@ -12,7 +12,7 @@ Sprint 4 implemented a full UI, which brought the product to life as a “chat \
 2. Agent: Prompts improved to generate more candidates, spend less time parroting needless information and reducing the context window to enable longer chats (all Sprint 6).  
 3. Sprint 7 resolved the mismatch between `apps/web` and `apps/lovable-ui` — meaning future Lovable components port without translation.
 
-Sprint 8 feels like a bit of a new phase. We have a good product but need to establish a reliability floor. A \~50% session failure rate undermines every other improvement — users can’t experience a better product if the session crashes before they get there. 
+Sprint 8 feels like a bit of a new phase. We have a good product but need to establish a reliability floor. A \~50% session failure rate undermines every other improvement — users can’t experience a better product if the session crashes before they get there.
 
 **Sprint Goal**: A session should be able to reach and complete the Decision phase without a fatal tool error. The agent should use tools proactively without needing to be prompted \- it should keep the suggested candidates at 3 or more and not spend 1-2 turns with a single card in there.
 
@@ -76,9 +76,9 @@ It was noted that a method of picking up a session to continue later would be a 
 
 ### The backup model behaves a bit differently to the primary model
 
-2. **Backup agent uses markdown**: The fallback model produces markdown-formatted responses (headers, bold, bullet lists). The web app renders these as unstyled inline text. The backup agent's prompt does not currently include a markdown suppression instruction.  
-3. **Backup agent comparison matrix overwrite**: When the backup agent adds a row to the comparison matrix, it **sometimes** sends only the new row rather than the complete matrix — discarding previously generated rows. The `generate_comparison_matrix` tool description instructs the model to read current values from state and always send the complete matrix, but the backup agent is not following this instruction reliably. The history filtering introduced in Sprint 6 (which removed tool call history from the context window) was identified as a known risk for exactly this pattern.  
-4. **Backup agent exposes internal reasoning**: The backup agent occasionally writes its chain-of-thought or instruction text into the chat response, visible to the user.
+3. **Backup agent uses markdown**: The fallback model produces markdown-formatted responses (headers, bold, bullet lists). The web app renders these as unstyled inline text. The backup agent's prompt does not currently include a markdown suppression instruction.  
+4. **Backup agent comparison matrix overwrite**: When the backup agent adds a row to the comparison matrix, it **sometimes** sends only the new row rather than the complete matrix — discarding previously generated rows. The `generate_comparison_matrix` tool description instructs the model to read current values from state and always send the complete matrix, but the backup agent is not following this instruction reliably. The history filtering introduced in Sprint 6 (which removed tool call history from the context window) was identified as a known risk for exactly this pattern.  
+5. **Backup agent exposes internal reasoning**: The backup agent occasionally writes its chain-of-thought or instruction text into the chat response, visible to the user.
 
 ### Debugging what’s going wrong when live-testing can be pretty difficult
 
@@ -191,20 +191,16 @@ The roadmap for Sprints 8-11 follows a deliberate sequence: fix reliability, imp
 
 **Current status**:
 
-1. Planning is in progress (WIP). Awaiting PM review and approval.
-
-2. Once approved, the `Sprint 8 Spec` will be written.
-
-3. The sprint is not yet ready for implementation.
+1. Planning is complete. The PM has approved the Sprint 8 Spec.  
+2. The `Sprint 8 Spec` has been written and approved: `sprint-8-spec.md`.  
+3. The sprint is ready for implementation.
 
 **Decisions aligned between PM & Code-Agent**:
 
-1. **Retry on `tool_use_failed`**: Single retry only — no escalation to the fallback model. The retry may resend the same request or include a corrective "fix the format" nudge (implementation detail for the spec). If the retry also fails, that's what the Phase 1 "targeted error logging" item is for.
-
-2. **Backup model**: `openai/gpt-oss-120b` confirmed as the new backup. Its role is unchanged from before — it only activates once the primary model's rate limit is exhausted (429), not as part of `tool_use_failed` retry handling. No dedicated test plan; observe organically whenever it triggers during testing.
-
-3. **Forced `tool_choice="required"` for candidate refilling**: Deferred and conditional — not part of the initial Phase 1 build. Revisit only after item 1's retry has been validated in testing. If pursued later: threshold is `active_count < 2` (i.e. 0 or 1 active suggestions, not <3), and the change must be trivial to remove — if it destabilises tool-calling further, it gets pulled immediately.
+1. **Retry on `tool_use_failed`**: Single retry only — no escalation to the fallback model. The retry may resend the same request or include a corrective "fix the format" nudge (implementation detail for the spec). If the retry also fails, that's what the Phase 1 "targeted error logging" item is for.  
+2. **Backup model**: `openai/gpt-oss-120b` confirmed as the new backup. Its role is unchanged from before — it only activates once the primary model's rate limit is exhausted (429), not as part of `tool_use_failed` retry handling. No dedicated test plan; observe organically whenever it triggers during testing.  
+3. **Forced `tool_choice="required"` for candidate refilling**: Deferred and conditional — not part of the initial Phase 1 build. Revisit only after item 1's retry has been validated in testing. If pursued later: threshold is `active_count < 2` (i.e. 0 or 1 active suggestions, not \<3), and the change must be trivial to remove — if it destabilises tool-calling further, it gets pulled immediately.
 
 **Decisions still open between PM & Code-Agent**:
 
-* None (yet) 
+* None (yet)
