@@ -17,7 +17,13 @@ TOOL_UPDATE_TRIP_PROFILE = {
     "type": "function",
     "function": {
         "name": "update_trip_profile",
-        "description": "Update the traveler's trip profile based on conversation extraction. For array fields (likes, avoid), always send the COMPLETE current list — read the existing values from the state above and include them alongside any new additions or removals. Never send only the new item.",
+        "description": (
+            "Update the traveler's trip profile based on conversation extraction. "
+            "For 'vacation_type', 'likes', and 'avoid', send the current items plus "
+            "anything newly mentioned — the server merges these additively, so "
+            "existing items are never dropped even if you omit them. Removing an "
+            "item from any of these lists is a UI-only action, not done via this tool."
+        ),
         "parameters": {
             "type": "object",
             "properties": {
@@ -26,7 +32,7 @@ TOOL_UPDATE_TRIP_PROFILE = {
                 "when": {"type": ["string", "null"]},
                 "duration": {"type": ["string", "null"]},
                 "budget": {"type": ["string", "null"]},
-                "vacation_type": {"type": ["array", "null"], "items": {"type": "string"}, "description": "List of vacation style descriptors (e.g. ['beach', 'adventure', 'city break']). Always send the COMPLETE current list including existing values."},
+                "vacation_type": {"type": ["array", "null"], "items": {"type": "string"}, "description": "List of vacation style descriptors (e.g. ['beach', 'adventure', 'city break'])."},
                 "likes": {"type": ["array", "null"], "items": {"type": "string"}},
                 "avoid": {"type": ["array", "null"], "items": {"type": "string"}},
             },
@@ -49,7 +55,12 @@ TOOL_SUGGEST_CANDIDATES = {
                         "properties": {
                             "name": {"type": "string"},
                             "region": {"type": "string"},
-                            "vibe": {"type": "string", "description": "1-sentence vibe statement explaining why this fits this specific user profile."},
+                            "vibe": {
+                                "type": "string",
+                                "description": (
+                                    "1-sentence description of what this destination is actually like — its character and atmosphere (e.g. 'a laid-back island with whitewashed villages and volcanic beaches')."
+                                ),
+                            },
                         },
                         "required": ["name", "region", "vibe"],
                     },
@@ -85,8 +96,19 @@ TOOL_GENERATE_COMPARISON_MATRIX = {
                         "type": "object",
                         "properties": {
                             "name": {"type": "string"},
-                            "best_for": {"type": "string"},
-                            "seasonal_note": {"type": "string"},
+                            "best_for": {
+                                "type": "string",
+                                "description": (
+                                    "This traveler's personalised 'trip feel' for this "
+                                    "destination — given their profile, what would THEIR trip here actually be like? Not a general description of the place — that's `vibe`."
+                                ),
+                            },
+                            "seasonal_note": {
+                                "type": "string",
+                                "description": (
+                                    "What this destination is like during the time of year this traveler is planning to visit."
+                                ),
+                            },
                         },
                         "required": ["name", "best_for", "seasonal_note"],
                     },
@@ -145,6 +167,25 @@ TOOL_FORMAT_NUDGE = {
         "mechanism — do not write a function call as text in your response."
     ),
 }
+
+
+def _merge_unique(existing: list[str], incoming: list[str]) -> list[str]:
+    """Union-merge two string lists, case-insensitively, preserving order.
+
+    Existing items are kept in their current order; incoming items not already
+    present (by case-insensitive match) are appended. Makes trip-profile list
+    fields (vacation_type/likes/avoid) additive-only — protects against the
+    model sending a shorter list and silently dropping previously recorded
+    items. Deliberate removal is a UI-only action (TripProfileComponent chip
+    removal -> profile_override).
+    """
+    seen = {item.lower() for item in existing}
+    merged = list(existing)
+    for item in incoming:
+        if item.lower() not in seen:
+            merged.append(item)
+            seen.add(item.lower())
+    return merged
 
 
 class AgentOrchestrator:
@@ -284,11 +325,11 @@ class AgentOrchestrator:
             if "budget" in args:
                 plan.trip_profile.budget = args["budget"]
             if "vacation_type" in args:
-                plan.trip_profile.vacation_type = args["vacation_type"]
+                plan.trip_profile.vacation_type = _merge_unique(plan.trip_profile.vacation_type, args["vacation_type"])
             if "likes" in args:
-                plan.trip_profile.likes = args["likes"]
+                plan.trip_profile.likes = _merge_unique(plan.trip_profile.likes, args["likes"])
             if "avoid" in args:
-                plan.trip_profile.avoid = args["avoid"]
+                plan.trip_profile.avoid = _merge_unique(plan.trip_profile.avoid, args["avoid"])
 
             return plan, "Trip profile updated."
 

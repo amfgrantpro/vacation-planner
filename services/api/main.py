@@ -66,8 +66,7 @@ async def chat(request: ChatRequest):
             incoming = request.profile_override.model_dump(exclude_none=True)
             for field, value in incoming.items():
                 if isinstance(value, list):
-                    if len(value) > 0:
-                        setattr(session.plan.trip_profile, field, value)
+                    setattr(session.plan.trip_profile, field, value)
                 elif value not in (None, ""):
                     setattr(session.plan.trip_profile, field, value)
 

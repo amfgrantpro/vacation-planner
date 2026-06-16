@@ -59,7 +59,9 @@ export function ChatInterface({ messages, onSendMessage, isLoading }: ChatInterf
                   : 'max-w-[92%] rounded-[20px] rounded-tl-md bg-card text-foreground'
               }`}
             >
-              <p className="whitespace-pre-wrap">{msg.content}</p>
+              {msg.content.split('\n').filter(p => p.trim()).map((para, i) => (
+                <p key={i} className={`whitespace-pre-wrap${i > 0 ? ' mt-2' : ''}`}>{para}</p>
+              ))}
             </div>
           </div>
         ))}
