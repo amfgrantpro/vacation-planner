@@ -43,7 +43,7 @@ function EarlyScreen() {
     travelers: "Couple",
     when: "September",
     duration: "~1 week",
-    vibe: "Warm, coastal, relaxed",
+    vacation_type: "Warm, coastal, relaxed",
     likes: "Food, coastal walks",
     avoid: "Greece (been recently)",
   });

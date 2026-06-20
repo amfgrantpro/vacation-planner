@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, X, MessageCircle, ArrowLeft, ChevronDown, RotateCcw } from "lucide-react";
+import { Plus, X, MessageCircle, ArrowLeft, ChevronDown, RotateCcw, Check } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
 
@@ -18,9 +18,13 @@ export type RemovedCandidate = { candidate: Candidate; reason: RejectReason };
 export function CandidateCard({
   c,
   onReject,
+  shortlisted = false,
+  onAddToShortlist,
 }: {
   c: Candidate;
   onReject?: (reason: RejectReason) => void;
+  shortlisted?: boolean;
+  onAddToShortlist?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -34,36 +38,42 @@ export function CandidateCard({
         <div className="absolute left-3 top-3 rounded-full bg-cream/90 px-2.5 py-1 text-[10.5px] font-medium uppercase tracking-[0.12em] text-ocean-deep backdrop-blur">
           {c.region}
         </div>
-        {onReject && (
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <button
-                aria-label={`Reject ${c.name}`}
-                className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-full bg-cream/90 text-ocean-deep/70 backdrop-blur transition hover:bg-destructive hover:text-destructive-foreground"
-              >
-                <X className="size-3.5" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-60 p-3">
-              <div className="mb-2 text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-                Why remove?
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {REASONS.map((r) => (
-                  <button
-                    key={r}
-                    onClick={() => {
-                      setOpen(false);
-                      onReject(r);
-                    }}
-                    className="rounded-full border border-border bg-card px-2.5 py-1 font-sans text-[12px] text-foreground transition hover:bg-ocean-deep hover:text-primary-foreground"
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
+        {shortlisted ? (
+          <div className="absolute right-3 top-3 rounded-full bg-ocean-deep px-2.5 py-1 text-[10.5px] font-semibold text-primary-foreground shadow-sm">
+            ✓ Shortlisted
+          </div>
+        ) : (
+          onReject && (
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  aria-label={`Reject ${c.name}`}
+                  className="absolute right-3 top-3 flex size-7 items-center justify-center rounded-full bg-cream/90 text-ocean-deep/70 backdrop-blur transition hover:bg-destructive hover:text-destructive-foreground"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-60 p-3">
+                <div className="mb-2 text-[10.5px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+                  Why remove?
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {REASONS.map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => {
+                        setOpen(false);
+                        onReject(r);
+                      }}
+                      className="rounded-full border border-border bg-card px-2.5 py-1 font-sans text-[12px] text-foreground transition hover:bg-ocean-deep hover:text-primary-foreground"
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          )
         )}
       </div>
       <div className="flex flex-1 flex-col gap-3 p-5">
@@ -85,9 +95,21 @@ export function CandidateCard({
           <button className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-border bg-card font-sans text-[12.5px] font-medium text-foreground transition hover:bg-cream">
             <MessageCircle className="size-3.5" /> Tell me more
           </button>
-          <button className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-ocean-deep/15 bg-cream font-sans text-[12.5px] font-medium text-ocean-deep transition hover:bg-ocean-deep hover:text-primary-foreground">
-            <Plus className="size-3.5" /> Add to shortlist
-          </button>
+          {shortlisted ? (
+            <button
+              disabled
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl bg-ocean-deep font-sans text-[12.5px] font-medium text-primary-foreground shadow-card"
+            >
+              <Check className="size-3.5" /> In shortlist
+            </button>
+          ) : (
+            <button
+              onClick={onAddToShortlist}
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-xl border border-ocean-deep/15 bg-cream font-sans text-[12.5px] font-medium text-ocean-deep transition hover:bg-ocean-deep hover:text-primary-foreground"
+            >
+              <Plus className="size-3.5" /> Add to shortlist
+            </button>
+          )}
         </div>
       </div>
     </article>

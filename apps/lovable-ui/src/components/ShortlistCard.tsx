@@ -28,6 +28,7 @@ export type Shortlist = {
   vibe: string;
   bestFor: string;
   seasonNote: string;
+  seasonLabel?: string;
   rows: DetailRow[];
 };
 
@@ -74,7 +75,7 @@ export function ShortlistCard({ s, winner = false }: { s: Shortlist; winner?: bo
         <div className="flex items-start gap-2 rounded-xl bg-sun/15 px-3.5 py-2.5">
           <CalendarRange className="mt-0.5 size-3.5 shrink-0 text-[oklch(0.45_0.13_70)]" />
           <p className="font-sans text-[12.5px] leading-relaxed text-foreground/85">
-            <span className="font-medium">In September: </span>
+            <span className="font-medium">{s.seasonLabel ?? "In season:"} </span>
             {s.seasonNote}
           </p>
         </div>

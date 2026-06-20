@@ -31,7 +31,7 @@ export function buildProfile(opts: {
   when?: string;
   duration?: string;
   budget?: string;
-  vibe?: ChipInput;
+  vacation_type?: ChipInput;
   likes?: ChipInput;
   avoid?: ChipInput;
 }): TripField[] {
@@ -72,7 +72,7 @@ export function buildProfile(opts: {
     scalar("when", <Calendar className="size-3.5" />, "When", opts.when, "sun"),
     scalar("duration", <Clock className="size-3.5" />, "Duration", opts.duration, "sage"),
     scalar("budget", <Wallet className="size-3.5" />, "Budget", opts.budget, "coral"),
-    arr("vibe", <Sun className="size-3.5" />, "Vacation type & vibe", toChips(opts.vibe), "sun"),
+    arr("vacation_type", <Sun className="size-3.5" />, "Vacation type & vibe", toChips(opts.vacation_type), "sun"),
     arr("likes", <Heart className="size-3.5" />, "Things we like", toChips(opts.likes), "coral"),
     arr("avoid", <Ban className="size-3.5" />, "Let's avoid", toChips(opts.avoid), "ocean"),
   ];
@@ -86,7 +86,7 @@ const accentBg: Record<NonNullable<TripField["accent"]>, string> = {
   coral: "bg-coral/15 text-[oklch(0.45_0.16_35)]",
 };
 
-export function TripProfile({ fields, title = "Trip profile" }: { fields: TripField[]; title?: string }) {
+export function TripProfile({ fields, title = "Trip profile", step }: { fields: TripField[]; title?: string; step?: number }) {
   // Local editable mirror of fields. Reseed when incoming fields change (last-write-wins).
   const [state, setState] = useState<TripField[]>(fields);
   useEffect(() => setState(fields), [fields]);
@@ -109,7 +109,20 @@ export function TripProfile({ fields, title = "Trip profile" }: { fields: TripFi
 
   return (
     <div className="rounded-2xl border border-border/70 bg-card p-5 shadow-card">
-      <div className="mb-4 flex items-baseline justify-between">
+      <div className="mb-4 flex items-baseline justify-between gap-3">
+        {step != null && (
+          <span
+            className={`inline-flex h-10 w-10 items-center justify-center rounded-full ${
+              step === 1
+                ? "bg-ocean/10 text-ocean-deep"
+                : step === 2
+                ? "bg-sun/20 text-[oklch(0.45_0.13_70)]"
+                : "bg-coral/15 text-[oklch(0.45_0.16_35)]"
+            } ring-1 ring-border/60 text-sm font-semibold`}
+          >
+            {step}
+          </span>
+        )}
         <h3 className="font-serif text-base font-semibold tracking-tight">{title}</h3>
       </div>
 
@@ -158,7 +171,7 @@ function EditableField({
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1 text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">
-              <span className="truncate">{f.label}</span>
+              <span className="whitespace-normal break-words">{f.label}</span>
               <Pencil className="size-2.5 opacity-0 transition group-hover/field:opacity-60" />
             </div>
             {f.kind === "scalar" ? (

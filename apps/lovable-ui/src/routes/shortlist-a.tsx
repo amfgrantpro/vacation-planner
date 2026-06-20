@@ -58,7 +58,7 @@ function ShortlistA() {
     when: "Mid-September",
     duration: "8 nights",
     budget: "Mid-range",
-    vibe: "Coastal, relaxed, food-led",
+    vacation_type: "Coastal, relaxed, food-led",
     likes: "Food markets, coastal walks, swimming, wine",
     avoid: "Greece, big resort crowds",
   });

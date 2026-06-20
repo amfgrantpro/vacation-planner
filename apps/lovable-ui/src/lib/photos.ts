@@ -7,6 +7,8 @@ export const photos = {
   porto: u("1555990793-da11153b2473"),
   sanSebastian: u("1558642084-fd07fae5282e"),
   mallorca: u("1530841377377-3ff06c0ca713"),
+  maasaiMara: u("1500534314209-a25ddb2bd429"),
+  serengeti: u("1500530855697-b586d89ba3ee"),
   sicily: u("1523906834658-6e24ef2386f9"),
   amalfi: u("1533104816931-20fa691ff6ca"),
   crete: u("1602143407151-7111542de6e8"),

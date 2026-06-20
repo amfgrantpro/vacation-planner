@@ -42,7 +42,7 @@ function Decision() {
     when: "12–20 September",
     duration: "8 nights",
     budget: "Mid-range · ~€2,800 pp",
-    vibe: "Coastal, slow, food-led",
+    vacation_type: "Coastal, slow, food-led",
     likes: "Coastal hikes, swimming, stone villages, wine, market mornings",
     avoid: "Greece, daily packing/unpacking, big resort crowds",
   });

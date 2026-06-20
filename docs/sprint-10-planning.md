@@ -1,4 +1,4 @@
-# **Sprint 10 Planning (WIP)**
+# **Sprint 10 Planning**
 
 ## **1\. Executive Alignment**
 
@@ -231,9 +231,9 @@ Sprints 10, 11 and 12 improve the product experience and benefit by having 2 age
 
 **Current status**:
 
-1. Planning is in progress (WIP). Awaiting PM review and approval.  
-2. Once approved, the `Sprint 10 Spec` will be written.  
-3. The sprint is not yet ready for implementation.
+1. Planning is complete. The PM has approved the Sprint 10 Spec.  
+2. The `Sprint 10 Spec` has been written and approved: `sprint-10-spec.md`.  
+3. The sprint is ready for implementation.
 
 **Decisions aligned between PM & Code-Agent**:
 

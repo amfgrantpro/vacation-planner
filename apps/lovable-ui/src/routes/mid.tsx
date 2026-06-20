@@ -70,7 +70,7 @@ function MidScreen() {
     when: "Mid-September",
     duration: "8 nights",
     budget: "Mid-range",
-    vibe: "Coastal, relaxed, food-led",
+    vacation_type: "Coastal, relaxed, food-led",
     likes: "Food markets, swimming, walkable old towns, wine",
     avoid: "Greece, big crowds",
   });

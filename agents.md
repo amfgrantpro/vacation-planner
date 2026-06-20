@@ -45,6 +45,15 @@ To simulate a Product Team, we follow a strict feedback-driven partnership:
 5.  **Tweak-Together**: The PM and Agent iterate on prompts and logic in real-time to refine the "vibe" and performance.
 6. **Documentation**: The Agent writes a detailed result doc (e.g., `docs/sprint-X-result.md`) for human review. The doc details the final increment - it documents the current state and how it differs from the last increment. It does NOT get lost in the needless details of bug fixing or the journey of getting there.
 
+#### Design vs Application
+The Lovable UI files live in `apps/lovable-ui/`. They are visual design references — the actual running application is in `apps/web/`. The workflow is:
+
+1. PM will design and iterate UI in Lovable
+2. Lovable syncs to a separate GitHub repo (i.e. NOT in this project)
+3. PM pulls Lovable changes locally
+4. ONLY once agreed with the coding agent, the PM will copy the Lovable components into `apps/lovable-ui/` in the main repo
+5. A coding agent implements those components in the working app (`apps/web/`)
+
 ### **Proposing Changes**
 - The PM (human) wants to be guided in how real-world applications do this.
 - If you see a way to better align with **Real-World Products**, propose it. 
