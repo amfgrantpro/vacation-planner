@@ -26,7 +26,7 @@ export type Shortlist = {
   region: string;
   image: string;
   vibe: string;
-  bestFor: string;
+  tripFeel: string;
   seasonNote: string;
   seasonLabel?: string;
   rows: DetailRow[];
@@ -59,7 +59,7 @@ export function ShortlistCard({ s, winner = false }: { s: Shortlist; winner?: bo
 
         <div className="rounded-xl bg-teal-soft px-4 py-3.5">
           <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-ocean-deep/80">
-            Vacation vibe
+            Destination vibe
           </div>
           <p className="mt-1 font-sans text-[13.5px] leading-relaxed text-foreground/85">{s.vibe}</p>
         </div>
@@ -67,8 +67,8 @@ export function ShortlistCard({ s, winner = false }: { s: Shortlist; winner?: bo
         <div className="flex items-start gap-2 rounded-xl bg-sage/25 px-3.5 py-2.5">
           <Sparkles className="mt-0.5 size-3.5 shrink-0 text-[oklch(0.4_0.07_155)]" />
           <p className="font-sans text-[12.5px] leading-relaxed text-foreground/85">
-            <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-[oklch(0.4_0.07_155)]">Best for · </span>
-            {s.bestFor}
+            <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-[oklch(0.4_0.07_155)]">Trip feel · </span>
+            {s.tripFeel}
           </p>
         </div>
 

@@ -22,7 +22,7 @@ const left: Shortlist = {
   region: "Balearic Islands, Spain",
   image: photos.mallorca,
   vibe: "Base yourself in Sóller or Deià on the west coast — stone villages, citrus groves and cliff-side hikes a few steps from the door.",
-  bestFor: "Couples who want dramatic coastal hiking and warm September swims.",
+  tripFeel: "Couples who want dramatic coastal hiking and warm September swims.",
   seasonNote: "Sea is still 24°C, crowds have thinned, and the Tramuntana trail is at its best light.",
   rows: defaultRows({
     weather: "26°C / sunny, occasional warm evening breeze",
@@ -39,7 +39,7 @@ const right: Shortlist = {
   region: "Catalonia, Spain",
   image: photos.costaBrava,
   vibe: "Base in Begur or Cadaqués and walk the Camí de Ronda between hidden coves, eating long lunches of grilled seafood and Empordà wine.",
-  bestFor: "Food-led couples who want quiet coves and short coastal walks.",
+  tripFeel: "Food-led couples who want quiet coves and short coastal walks.",
   seasonNote: "Restaurants stay open, beaches empty out, and the light turns golden through October.",
   rows: defaultRows({
     weather: "25°C / sunny, cooler evenings than the Balearics",

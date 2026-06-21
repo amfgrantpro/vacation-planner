@@ -53,12 +53,20 @@ TOOL_SUGGEST_CANDIDATES = {
                     "items": {
                         "type": "object",
                         "properties": {
-                            "name": {"type": "string"},
-                            "region": {"type": "string"},
+                            "name": {"type": "string", "description": "The destination name only."},
+                            "region": {
+                                "type": "string",
+                                "description": (
+                                    "If the destination is a city or area, use its country "
+                                    "(e.g. 'Spain' for Basque Country). If the destination is "
+                                    "a country, use a broader geographic grouping "
+                                    "(e.g. 'Mediterranean' for Malta, 'South Asia' for Sri Lanka)."
+                                ),
+                            },
                             "vibe": {
                                 "type": "string",
                                 "description": (
-                                    "1-sentence description of what this destination is actually like — its character and atmosphere (e.g. 'a laid-back island with whitewashed villages and volcanic beaches')."
+                                    "1-sentence description of what this destination is like and famous for — its character and atmosphere (e.g. 'a laid-back island with whitewashed villages and volcanic beaches')."
                                 ),
                             },
                         },
@@ -91,12 +99,12 @@ TOOL_GENERATE_COMPARISON_MATRIX = {
                 },
                 "candidates_details": {
                     "type": "array",
-                    "description": "Provides comparison card details (best_for, seasonal_note) for each compared destination.",
+                    "description": "Provides comparison card details (trip_feel, seasonal_note) for each compared destination.",
                     "items": {
                         "type": "object",
                         "properties": {
                             "name": {"type": "string"},
-                            "best_for": {
+                            "trip_feel": {
                                 "type": "string",
                                 "description": (
                                     "This traveler's personalised 'trip feel' for this "
@@ -110,7 +118,7 @@ TOOL_GENERATE_COMPARISON_MATRIX = {
                                 ),
                             },
                         },
-                        "required": ["name", "best_for", "seasonal_note"],
+                        "required": ["name", "trip_feel", "seasonal_note"],
                     },
                 },
             },
@@ -352,16 +360,16 @@ class AgentOrchestrator:
 
                 # Preserve existing status and details to avoid demoting shortlisted candidates
                 existing_status = existing.status if existing else "suggested"
-                existing_best_for = existing.best_for if existing else None
+                existing_trip_feel = existing.trip_feel if existing else None
                 existing_seasonal_note = existing.seasonal_note if existing else None
-                
+
                 candidate = DestinationCandidate(
                     name=item["name"],
                     region=item.get("region", ""),
                     vibe=item.get("vibe", ""),
                     photo_url=photo_url,
                     status=existing_status,
-                    best_for=existing_best_for,
+                    trip_feel=existing_trip_feel,
                     seasonal_note=existing_seasonal_note,
                 )
                 candidates_dict[key] = candidate
@@ -374,7 +382,7 @@ class AgentOrchestrator:
             matrix_rows = args.get("matrix_rows", [])
             candidates_details = args.get("candidates_details", [])
 
-            # Update candidate details (best_for, seasonal_note)
+            # Update candidate details (trip_feel, seasonal_note)
             candidates_dict = {c.name.lower(): c for c in plan.candidates}
             for detail in candidates_details:
                 name = detail.get("name")
@@ -382,7 +390,7 @@ class AgentOrchestrator:
                     continue
                 key = name.lower()
                 if key in candidates_dict:
-                    candidates_dict[key].best_for = detail.get("best_for")
+                    candidates_dict[key].trip_feel = detail.get("trip_feel")
                     candidates_dict[key].seasonal_note = detail.get("seasonal_note")
 
             plan.candidates = list(candidates_dict.values())

@@ -15,22 +15,15 @@ export const Route = createFileRoute("/")({
 });
 
 const VACATION_TYPES = [
-  "Beach",
+  "Beaches",
   "City break",
-  "Hiking",
-  "Wildlife",
-  "Food & wine",
-  "Cultural",
-  "Ski & snow",
-  "Road trip",
-  "Wellness",
-  "Adventure",
-  "Island-hopping",
-  "Family-friendly",
-  "Nightlife",
   "Nature & outdoors",
-  "Off the beaten path",
-  "Romantic",
+  "Roadtripping",
+  "Cultural",
+  "Food & wine",
+  "Romantic getaway",
+  "Sports & recreation",
+  "Wellness & relaxation",
 ];
 
 const TRAVELER_OPTS = ["just me", "a couple", "a family", "a group of friends"];

@@ -27,11 +27,17 @@ class BasePrompts:
     def _clean_candidates_for_prompt(cls, plan_dict: dict) -> dict:
         """Strip backend-only fields from candidates before serialising to state JSON.
 
-        Fields like photo_url, best_for, seasonal_note, and rejection_reason are
+        Fields like photo_url, trip_feel, seasonal_note, and rejection_reason are
         resolved or displayed separately. Showing them in state JSON causes the LLM
         to try to echo them in tool call output, producing malformed JSON.
+
+        In compare/decision modes, vibe is also stripped — it was generated during
+        explore and is stored on the candidate, but showing it to the model when it
+        generates trip_feel causes it to anchor on vibe and produce a near-identical
+        rephrasing. The model still has name, region, and the full trip profile.
         """
-        keep = {"name", "region", "vibe", "status"}
+        mode = plan_dict.get("mode", "explore")
+        keep = {"name", "region", "status"} if mode in ("compare", "decision") else {"name", "region", "vibe", "status"}
         cleaned = dict(plan_dict)
         if "candidates" in cleaned:
             cleaned["candidates"] = [
@@ -74,7 +80,7 @@ Current Agent State:
 Your job here has two equal halves: build genuine understanding of the traveler — their preferences, constraints, and deeper motivations — through conversation, and constantly surface the 3 best-matching destination candidates for that understanding.
 
 What to Do:
-1. **First Turn**: The traveler's core trip details (origin, traveler type, timing, duration, budget, and vacation type) are already filled in the state above. Do NOT restate or re-record them. Suggest 3 destinations that fit what's known so far.
+1. **First Turn**: The traveler's core trip details (origin, traveler type, timing, duration, budget, and vacation type) are already filled in the state above. Do NOT restate or re-record them with a tool. DO Suggest 3 destinations that fit what's known so far.
    - If the traveler said they already have destinations in mind, use your chat message to ask which destination(s) they're considering, instead of describing the 3 you suggested. When they name specific destinations in response, include those exact names as candidates in your very next call — add them first, and fill any remaining slots with 1-2 related alternatives.
    - Otherwise, use your chat message to start surfacing what onboarding can't capture: likes, things to avoid, and deeper motivations.
 2. **Ongoing**: As new profile details emerge, record them immediately — and if that changes who the best 3 matches are, refresh the candidate panel the same turn (see Shared Guidelines for panel rules).
@@ -118,7 +124,7 @@ You're helping this traveler choose a vacation between their shortlisted destina
 
 What to Do:
 1. **First-turn**: As soon as destinations are compared, generate the matrix for all of them with a sensible starting set of criteria (e.g. 'Weather', 'Getting Around', 'Top attractions') — don't restate vibes or narrate findings in chat, the matrix and cards do that. Then ask what matters most to them in choosing their next vacation.
-2. **Make the Cards Personal**: `best_for` is this traveler's personalised "trip feel" — given what you know about them, what would THEIR trip here actually be like? (`vibe` already covers the place itself — don't repeat it.) `seasonal_note` is what the destination is like during the time of year they're planning to travel.
+2. **Make the Cards Personal**: `trip_feel` must be personalised for this traveler — given what you know about them, what would THEIR experience here actually feel like? (DO NOT repeat the information contained in `vibe`.) `seasonal_note` is what the destination is like during the time of year they're planning to travel.
    `matrix_rows`: a flat array of objects — a 'criterion' key (e.g. 'Weather', 'Getting Around', 'Top attractions') plus one key per shortlisted destination with a short descriptive string. E.g. [{'criterion': 'Weather', 'Santorini': 'Sunny, 25C', 'Amalfi Coast': 'Warm, 23C'}]. No nested 'header'/'rows' wrapper. A 'Best Suited For' row (honeymoons, families, foodies, etc.) is often a good matrix row.
 3. **Track What Matters as It Comes Up**: When the traveler mentions a new must-have, deal-breaker, or worry, add it to the profile AND as a matrix row. If nothing new came up, leave the matrix as it is.
 4. **No Markdown Tables**: **NEVER** print tables, matrices, or tabular structures in `text_reply` — the right-hand panel handles all of that.

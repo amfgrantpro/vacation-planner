@@ -1,4 +1,4 @@
-# **Sprint 11 Planning (WIP)**
+# **Sprint 11 Planning**
 
 ## **1\. Executive Alignment**
 
@@ -170,7 +170,7 @@ Real-world parallel: Mindtrip and Layla both use their landing pages to signal "
 1. **Destination vibe / Trip feel — FE label alignment & field rename**: Follow-up to Sprint 10’s prompt-only `vibe`/`best_for` content redefinition. Align the FE labels and rename `best_for` → `trip_feel` in the tool schema, state object, and frontend. Remember to ALSO change this in lovable-ui once completed.  
 2. **Show country on candidate cards (Explore)**: Country should be visible on the card itself, not requiring “Tell me more” to discover. May require a tool schema update.
     * Discovered during planning: The tool schema captures `name` and `region`. If the session is country-as-destination (e.g. I want to go to Sri Lanka, Mexico), then adding a third `country` field will not work. 
-    * Decided during planning: We cannot "introduce" a new field. This will be a prompt-only fix to sharpen the tool definition and ensure the agent fills country when appropriate. Something like "region should be the country when the destination is a city or area; use a macro-region only when the destination itself is a country." - Except better and clearer and not so shit. 
+    * Decided during planning: We cannot "introduce" a new field. This will be a prompt-only fix to sharpen the tool definition and ensure the agent fills country when appropriate. Something like "region should be the country when the destination is a city or area; use a macro-region only when the destination itself is a country." - Except better and clearer.
 
 **Phase 2: Redesign of the landing and first product experience**
 
@@ -221,9 +221,9 @@ Real-world parallel: Mindtrip and Layla both use their landing pages to signal "
 
 **Current status**:
 
-1. Planning is in progress (WIP). Awaiting PM review and approval.  
-2. Once approved, the `Sprint 11 Spec` will be written.  
-3. The sprint is not yet ready for implementation.
+1. Planning is complete. The PM has approved the Sprint 11 Spec.  
+2. The `Sprint 11 Spec` has been written and approved: `sprint-11-spec.md`.  
+3. The sprint is ready for implementation.
 
 **Decisions aligned between PM & Code-Agent**:
 

@@ -23,7 +23,7 @@ const winner: Shortlist = {
   region: "Balearic Islands, Spain",
   image: photos.mallorca,
   vibe: "Eight nights in a restored stone finca above Sóller. Mornings on the Tramuntana, afternoons swimming in Port de Sóller, slow dinners on the plaça.",
-  bestFor: "A restful, food-led couple's week with one breathtaking landscape on the doorstep.",
+  tripFeel: "A restful, food-led couple's week with one breathtaking landscape on the doorstep.",
   seasonNote: "Sea is 24°C, the lemon harvest begins, and the GR-221 trail is at its most photogenic light.",
   rows: defaultRows({
     weather: "26°C / sunny · warm sea · cool evenings",

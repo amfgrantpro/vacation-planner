@@ -26,7 +26,7 @@ export interface DestinationCandidate {
   vibe: string;
   photo_url: string;
   status: CandidateStatus;
-  best_for?: string | null;
+  trip_feel?: string | null;
   seasonal_note?: string | null;
   rejection_reason?: string | null;
 }

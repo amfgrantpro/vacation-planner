@@ -72,7 +72,7 @@ export function buildProfile(opts: {
     scalar("when", <Calendar className="size-3.5" />, "When", opts.when, "sun"),
     scalar("duration", <Clock className="size-3.5" />, "Duration", opts.duration, "sage"),
     scalar("budget", <Wallet className="size-3.5" />, "Budget", opts.budget, "coral"),
-    arr("vacation_type", <Sun className="size-3.5" />, "Vacation type & vibe", toChips(opts.vacation_type), "sun"),
+    arr("vacation_type", <Sun className="size-3.5" />, "Vacation type", toChips(opts.vacation_type), "sun"),
     arr("likes", <Heart className="size-3.5" />, "Things we like", toChips(opts.likes), "coral"),
     arr("avoid", <Ban className="size-3.5" />, "Let's avoid", toChips(opts.avoid), "ocean"),
   ];

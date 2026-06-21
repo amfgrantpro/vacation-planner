@@ -21,7 +21,7 @@ class DestinationCandidate(BaseModel):
     vibe: str  # Written specifically for this user
     photo_url: str
     status: str = "suggested"  # "suggested" | "shortlisted" | "rejected"
-    best_for: Optional[str] = None
+    trip_feel: Optional[str] = None
     seasonal_note: Optional[str] = None
     rejection_reason: Optional[str] = None  # e.g. "Too far", "Been there"
 

@@ -66,20 +66,20 @@ export function ShortlistCard({
         {/* Vibe box */}
         <div className="rounded-xl bg-teal-soft px-4 py-3.5">
           <div className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-ocean-deep/80">
-            Vacation vibe
+            Destination vibe
           </div>
           <p className="mt-1 font-sans text-[13.5px] leading-relaxed text-foreground/85">
             {candidate.vibe || <span className="italic text-muted-foreground/70">Exploring…</span>}
           </p>
         </div>
 
-        {/* Best for */}
-        {(candidate.best_for || isEnriching) && (
+        {/* Trip feel */}
+        {(candidate.trip_feel || isEnriching) && (
           <div className="flex items-start gap-2 rounded-xl bg-sage/25 px-3.5 py-2.5">
             <Sparkles className="mt-0.5 size-3.5 shrink-0 text-[oklch(0.4_0.07_155)]" />
             <p className="font-sans text-[12.5px] leading-relaxed text-foreground/85">
-              <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-[oklch(0.4_0.07_155)]">Best for · </span>
-              {candidate.best_for || <span className="italic text-muted-foreground/70">Analysing…</span>}
+              <span className="text-[10.5px] font-medium uppercase tracking-[0.12em] text-[oklch(0.4_0.07_155)]">Trip feel · </span>
+              {candidate.trip_feel || <span className="italic text-muted-foreground/70">Analysing…</span>}
             </p>
           </div>
         )}

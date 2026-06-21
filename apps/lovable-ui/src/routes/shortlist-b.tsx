@@ -22,7 +22,7 @@ const left: Shortlist = {
   region: "Sóller, Mallorca",
   image: photos.mallorca,
   vibe: "Settle into one stone-village finca for the whole week. Day-trip to coves, hike the Tramuntana, return to the same terrace each night.",
-  bestFor: "Couples who unpack once and want a slow, deeply restful pace.",
+  tripFeel: "Couples who unpack once and want a slow, deeply restful pace.",
   seasonNote: "Sóller's lemon harvest begins, market stays lively, and evenings are perfect on the plaça.",
   rows: defaultRows({
     weather: "26°C / sunny, warm sea",
@@ -39,7 +39,7 @@ const right: Shortlist = {
   region: "Sóller → Pollença, Mallorca",
   image: photos.roadtrip,
   vibe: "Three nights in Sóller for the western hikes, then drive the spine of the Tramuntana north to a quieter base in Pollença for the rest.",
-  bestFor: "Couples who want variety, scenic driving and to see more of the island.",
+  tripFeel: "Couples who want variety, scenic driving and to see more of the island.",
   seasonNote: "Drive is at its best in September — clear roads, soft light, open mountain restaurants.",
   rows: defaultRows({
     weather: "26°C south, slightly cooler in the north",

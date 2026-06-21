@@ -133,7 +133,7 @@ export function CandidateArea({
           vibe: '',
           photo_url: '',
           status: 'shortlisted' as const,
-          best_for: null,
+          trip_feel: null,
           seasonal_note: null,
         }
       );
