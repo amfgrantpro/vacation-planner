@@ -37,7 +37,6 @@ export interface VacationPlan {
   candidates: DestinationCandidate[];
   selected_winner: string | null;
   comparison_matrix: Record<string, string>[] | null;
-  notes: string;
 }
 
 export interface UiState {

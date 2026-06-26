@@ -39,7 +39,6 @@ class VacationPlan(BaseModel):
     candidates: List[DestinationCandidate] = Field(default_factory=list)
     selected_winner: Optional[str] = None
     comparison_matrix: Optional[List[dict]] = None
-    notes: str = ""
 
 
 class UiState(BaseModel):

@@ -104,7 +104,7 @@ The five-sprint arc delivers the new architecture incrementally, with each sprin
 
 **Current status**:
 
-1. Planning is complete. The PM has approved the Sprint 11 Spec.  
+1. Planning is complete. The PM has approved the Sprint 12 plan.
 2. The `Sprint 12 Spec` has been written and approved: `sprint-12-spec.md`.  
 3. The sprint is ready for implementation.
 

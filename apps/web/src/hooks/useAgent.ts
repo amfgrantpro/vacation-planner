@@ -6,7 +6,8 @@ export function useAgent() {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [plan, setPlan] = useState<VacationPlan | null>(null);
     const [isLoading, setIsLoading] = useState(false);
-    const [sessionId] = useState(() => Math.random().toString(36).substring(7));
+    const [sessionId, setSessionId] = useState<string | null>(null);
+    const sessionIdRef = useRef<string | null>(null);
     const [uiState, setUiState] = useState<UiState>({
         mode: 'explore',
         shortlist: [],
@@ -19,6 +20,14 @@ export function useAgent() {
 
     const updateUiState = (updates: Partial<UiState>) => {
         setUiState((prev) => ({ ...prev, ...updates }));
+    };
+
+    const createSession = async (): Promise<void> => {
+        const res = await fetch('http://localhost:8000/sessions', { method: 'POST' });
+        if (!res.ok) throw new Error('Failed to create session');
+        const data = await res.json();
+        sessionIdRef.current = data.session_id;
+        setSessionId(data.session_id);
     };
 
     const sendMessage = async (
@@ -41,7 +50,7 @@ export function useAgent() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     message: content,
-                    session_id: sessionId,
+                    session_id: sessionIdRef.current,
                     ui_state: {
                         ...stateToSend,
                         rejected_candidates: rejectedCandidates,
@@ -87,5 +96,5 @@ export function useAgent() {
         }
     };
 
-    return { messages, plan, isLoading, sessionId, uiState, updateUiState, sendMessage };
+    return { messages, plan, isLoading, sessionId, uiState, updateUiState, sendMessage, createSession };
 }

@@ -421,12 +421,15 @@ After implementation, verify the following in sequence. Check the Supabase Table
 
 **Phase C — Shortlist and candidate update**
 
+- [ ] Add trip profile details manually (UI action)
+- [ ] Ask agent to generate new candidates (in chat - it's needed to send the UI changes from manual user edits) (Check for trip profile and candidates updates in Supabase)
 - [ ] Shortlist one candidate (UI action)
 - [ ] Send a chat message to trigger a new turn
 - [ ] `candidates` table: shortlisted candidate has `status = 'shortlisted'`; others remain `'suggested'`
 
 **Phase D — Compare mode**
 
+- [ ] Reject 2 candidates. Remove them from rejected (should disappear from DB on next turn)
 - [ ] Shortlist 2–3 candidates; click "Compare shortlist"
 - [ ] `sessions` row: `mode` updated to `'compare'`
 - [ ] `comparison_criteria` rows written: one row per (criterion × candidate) pair; values populated

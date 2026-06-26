@@ -4,9 +4,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from agent.router import get_agent
 from agent.prototype_orchestrator import AgentOrchestrator as PrototypeAgentOrchestrator
-from agent.session import session_manager, prototype_session_manager
+from agent.session import SupabaseSessionManager, prototype_session_manager
 from agent.models import VacationPlan, UiState, DestinationCandidate, TripProfile, RejectedCandidate
 from agent.prototype_models import VacationPlan as PrototypeVacationPlan
+
+session_manager = SupabaseSessionManager()
 
 app = FastAPI(title="Agentic Travel Planner API")
 
@@ -17,6 +19,10 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class SessionCreateResponse(BaseModel):
+    session_id: str
 
 
 class ChatRequest(BaseModel):
@@ -48,6 +54,15 @@ prototype_agent = PrototypeAgentOrchestrator()
 @app.get("/")
 def health_check():
     return {"status": "ok", "service": "travel-planner-agent"}
+
+
+@app.post("/sessions", response_model=SessionCreateResponse)
+async def create_session():
+    try:
+        session_id = session_manager.create_session()
+        return SessionCreateResponse(session_id=session_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/chat", response_model=ChatResponse)

@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     UNSPLASH_ACCESS_KEY: str = ""
     GROQ_PRIMARY_MODEL: str = "llama-3.3-70b-versatile"
     GROQ_FALLBACK_MODEL: str = "openai/gpt-oss-120b"
+    SUPABASE_URL: str = ""
+    SUPABASE_ANON_KEY: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
     
     class Config:
         env_file = [".env", "../.env", "../../.env", "../../../.env"]

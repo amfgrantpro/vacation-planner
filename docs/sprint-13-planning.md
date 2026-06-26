@@ -104,9 +104,9 @@ The five-sprint arc delivers the new architecture incrementally, with each sprin
 
 **Current status**:
 
-1. Planning is in progress (WIP). Awaiting PM review and approval.  
-2. Once approved, the `Sprint 13 Spec` will be written.  
-3. The sprint is not yet ready for implementation.
+1. Planning is complete. The PM has approved the Sprint 13 plan.
+2. The `Sprint 13 Spec` has been written and approved: `sprint-13-spec.md`.  
+3. The sprint is ready for implementation.
 
 **Decisions aligned between PM & Code-Agent**:
 

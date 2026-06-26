@@ -1,5 +1,5 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Toaster, toast } from 'sonner';
 import { ChatInterface } from './components/ChatInterface';
 import { TripProfileComponent } from './components/TripProfileComponent';
@@ -9,15 +9,33 @@ import { useAgent } from './hooks/useAgent';
 import type { VacationPlan, Mode, RejectedCandidate, RejectReason, TripProfile } from './types';
 
 function App() {
-  const { messages, plan, isLoading, uiState, updateUiState, sendMessage } = useAgent();
+  const { messages, plan, isLoading, uiState, updateUiState, sendMessage, createSession } = useAgent();
   const [rejectedCandidates, setRejectedCandidates] = useState<RejectedCandidate[]>([]);
   const [pendingProfileOverride, setPendingProfileOverride] = useState<TripProfile | null>(null);
+  const [sessionStarting, setSessionStarting] = useState(false);
+  const [hiddenAfterUnreject, setHiddenAfterUnreject] = useState<Set<string>>(new Set());
+
+  // When a new plan arrives, drop any un-rejected names that are no longer in plan.candidates.
+  // Those candidates have left the agent's suggestion list, so the filter is no longer needed.
+  // If the agent later re-suggests one, it arrives fresh and not in hiddenAfterUnreject.
+  useEffect(() => {
+    if (plan && hiddenAfterUnreject.size > 0) {
+      const planNames = new Set(plan.candidates.map((c) => c.name.toLowerCase()));
+      setHiddenAfterUnreject((prev) => {
+        const next = new Set([...prev].filter((name) => planNames.has(name)));
+        return next.size === prev.size ? prev : next;
+      });
+    }
+  }, [plan]);
 
   // Check if session has started
   const sessionStarted = messages.length > 0 || plan !== null;
 
   // Handler for landing screen CTAs
-  const handleStartSession = (_path: 'inspire' | 'destinations') => {
+  const handleStartSession = async (_path: 'inspire' | 'destinations') => {
+    if (sessionStarting) return;
+    setSessionStarting(true);
+    await createSession();
     const initialMessage = sessionStorage.getItem('initialMessage') || 'Tell me about vacation options.';
     const onboardingRaw = sessionStorage.getItem('onboardingProfile');
     const onboardingProfile = onboardingRaw ? JSON.parse(onboardingRaw) : undefined;
@@ -91,6 +109,7 @@ function App() {
     setRejectedCandidates((prev) =>
       prev.filter((r) => r.name.toLowerCase() !== name.toLowerCase())
     );
+    setHiddenAfterUnreject((prev) => new Set([...prev, name.toLowerCase()]));
   };
 
   // Determine if compare button should be active
@@ -125,10 +144,12 @@ function App() {
     candidates: [],
     selected_winner: null,
     comparison_matrix: null,
-    notes: '',
   };
 
   const currentPlan = plan || defaultPlan;
+  const displayCandidates = currentPlan.candidates.filter(
+    (c) => !hiddenAfterUnreject.has(c.name.toLowerCase())
+  );
 
   return (
     <>
@@ -155,7 +176,7 @@ function App() {
           {/* Candidate Area - changes based on mode */}
           <CandidateArea
             mode={uiState.mode}
-            candidates={currentPlan.candidates}
+            candidates={displayCandidates}
             shortlist={uiState.shortlist}
             selectedWinner={currentPlan.selected_winner}
             comparisonMatrix={currentPlan.comparison_matrix}
