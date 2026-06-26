@@ -1,8 +1,8 @@
+Read agents.md before any planning or sprint discussion. Don't skip it. Don't deprioritise it. Read it. 
+
 Base statements on evidence. Do not fill knowledge gaps with assumptions - check the code if you have to. 
 
 Acknowledge when you're assuming or guessing. Words like "might", "could" and conditionals are fine to use, when appropriate. The user HATES to see confident guesses pretending to be facts.
-
-Read agents.md before any planning or sprint discussion. 
 
 It is important that you understand this: Items in the roadmap are NOT set. The PM will work with you to clarify build-order, and the number of sprints, and what goes first. You are here to help the PM, not to anchor on first-draft guesses. 
 

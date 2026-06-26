@@ -4,7 +4,7 @@
 
 **Purpose**: A place to record all open issues, as well as working space to sharpen solutions until they are ready for development.
 
-**Latest update**: 24th June 2026\.
+**Latest update**: 25th June 2026\.
 
 **Project meta-goal**: Test "Real-World AI Engineering". The product should be designed by copying existing solutions from real B2C products (e.g. Mindtrip, Layla). It's a product-copying project, not a meta-coding or meta-product project.
 
@@ -154,7 +154,7 @@ These are two distinct problems with different solutions:
 
 ---
 
-## **4\. Delivery history (as of Sprint 11\)**
+## **4\. Delivery history (as of Sprint 12\)**
 
 | Sprint | Major focus | Other important changes | Release date |
 | :---- | :---- | :---- | :---- |
@@ -168,7 +168,8 @@ These are two distinct problems with different solutions:
 | 8 | Agent reframed to act on new information the same turn rather than deferring. Tool-call retries introduced. | — | 12 Jun 2026 |
 | 9 | Single agent split into two: a dedicated Explore agent and a dedicated Compare agent, each with its own prompt and tools. | — | 13 Jun 2026 |
 | 10 | Both agents substantially improved. Profile updates stop silently dropping data. "Already have destinations" path added. | vibe and trip\_feel redefined as distinct fields for the first time. | 16 Jun 2026 |
-| 11 | Landing page redesigned — single CTA, multi-select vacation type, right panel becomes a journey preview rather than empty space. | — | 20 Jun 2026 |
+| 11 | Landing page redesigned. | Single CTA, multi-select vacation type, right panel becomes a journey preview rather than empty space. | 20 Jun 2026 |
+| 12 | Database setup (Supabase). | Five-table schema (`sessions`, `trip_profile`, `candidates`, `comparison_criteria`, `conversation_history`) committed to `supabase/schema.sql`. | 25 Jun 2026 |
 
 ---
 
@@ -201,10 +202,6 @@ These are two distinct problems with different solutions:
 ## **6\. Proposed Roadmap for upcoming sprints (Sprints 12-16)**
 
 ### Items planned for development
-
-Sprint 12: **Database setup**
-
-* Set up Supabase: tables for sessions, trip profile, candidates, comparison criteria, conversation history. No application changes — this sprint is foundation only.
 
 Sprint 13: **Session persistence migration**
 

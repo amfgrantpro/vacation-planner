@@ -212,12 +212,12 @@ vacation-planner/
 
 **`trip_feel` content quality**: The model treats `trip_feel` largely as a rephrasing of `vibe` rather than a genuinely personalised "trip feel" grounded in the traveler's profile. In the worst case the content is near-identical to `vibe` with minor word substitutions; in better cases it constructs a sentence around the same adjectives with profile context added superficially. 
 PM iteration: 
-    * Suggested direction: the instruction should anchor `trip_feel` to specific profile facts (who they're travelling with, what they like, when they're going) rather than restating destination character.
-    * I altered the tool description of `vibe` to "1-sentence description of what this destination is like and famous for — its character and atmosphere (e.g. 'a laid-back island with whitewashed villages and volcanic beaches')."
-    * I altered the prompt to "2. **Make the Cards Personal**: `trip_feel` must be personalised for this traveler — given what you know about them, what would THEIR experience here actually feel like? (DO NOT repeat the information contained in `vibe`.) `seasonal_note` is what the destination is like during the time of year they're planning to travel."
-    * Testing after these 2 changes still resulted in the trip feel being almost word-for-word the same as destination vibe. 
-    * Fix applied. `_clean_candidates_for_prompt` now strips `vibe` from candidates when in compare/decision mode. The model still has destination name, region, and the full trip profile, but can no longer anchor on the existing vibe text when generating `trip_feel`. Vibe is stored on the candidate and returned to the frontend unaffected.
-    * After further testing: The trip feel is now noticeably different than destination vibe.
+* Suggested direction: the instruction should anchor `trip_feel` to specific profile facts (who they're travelling with, what they like, when they're going) rather than restating destination character.
+* I altered the tool description of `vibe` to "1-sentence description of what this destination is like and famous for — its character and atmosphere (e.g. 'a laid-back island with whitewashed villages and volcanic beaches')."
+* I altered the prompt to "2. **Make the Cards Personal**: `trip_feel` must be personalised for this traveler — given what you know about them, what would THEIR experience here actually feel like? (DO NOT repeat the information contained in `vibe`.) `seasonal_note` is what the destination is like during the time of year they're planning to travel."
+* Testing after these 2 changes still resulted in the trip feel being almost word-for-word the same as destination vibe. 
+* Fix applied. `_clean_candidates_for_prompt` now strips `vibe` from candidates when in compare/decision mode. The model still has destination name, region, and the full trip profile, but can no longer anchor on the existing vibe text when generating `trip_feel`. Vibe is stored on the candidate and returned to the frontend unaffected.
+* After further testing: The trip feel is now noticeably different than destination vibe.
 
 ---
 
