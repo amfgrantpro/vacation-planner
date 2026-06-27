@@ -146,13 +146,16 @@ All constraints from Sprints 1–12 are preserved. New constraints added this sp
 
 **Phase A — Session creation**: ✅ `POST /sessions` returns UUID; `sessions` row written with `mode = 'explore'`.
 
-**Phase B — First chat turn**: ✅ `trip_profile`, `candidates` (3 rows, all `suggested`), and `conversation_history` (all turns including tool call messages) written correctly. App UI unchanged.
+**Phase B — First chat turn**: ✅ `trip_profile`, `candidates` (3 rows, all `suggested`), and `conversation_history` (all turns including tool call messages) written correctly. App UI unchanged. 
+* PM note: Because Unsplash failed for 2 locations, their image URL is the same generic one.
+* PM note: Error logging, as implemented in Sprint 8, was observed for the first time. A first-turn tool-call failed, was re-prompted, and worked successfully.
 
-**Phase C — Shortlist and candidate update**: ✅ Shortlisted candidate shows `status = 'shortlisted'` in DB. New agent suggestions inserted as new rows; existing rows updated in place. Rejected candidates saved as `status = 'rejected'`. Un-rejected candidates deleted from DB on next save. Candidate DB-sync confirmed working across multiple turns with growing candidate set.
+**Phase C — Shortlist and candidate update**: ✅ Shortlisted candidate shows `status = 'shortlisted'` in DB. New agent suggestions inserted as new rows; existing rows updated in place. Rejected candidates saved as `status = 'rejected'`. Un-rejected candidates deleted from DB on next save. Candidate DB-sync confirmed working across multiple turns with growing candidate set. 
+* PM note: The agent suggested a full 3 new candidates each time, but the UI only displays 6 of them. So 9 suggested by agent: 1 is shortlisted, 6 "suggested" show, 2 "suggested" are hidden. Tested: I rejected 2 candidates and the 2 hidden ones appeared without a turn. Success! 
 
 **Phase D — Compare mode**: ✅ `sessions.mode` updated to `'compare'`. `comparison_criteria` rows written (one per criterion × candidate pair). `trip_feel` and `seasonal_note` populated on shortlisted candidates in `candidates` table.
 
-**Phase E — Comparison criteria upsert**: ✅ New criteria appended across two turns (3 → 4 → 7 criteria). Existing rows confirmed present with original values. Verified via conversation_history JSONB that the LLM sent full cumulative sets on all three turns (no partial send in this test run).
+**Phase E — Comparison criteria upsert**: ✅ New criteria appended across two turns (3 → 4 → 7 criteria). Existing rows confirmed present with original values. Verified via conversation_history JSONB that the LLM sent full cumulative sets on all three turns (no partial send in this test run - cannot verify persistence).
 
 **Phase F — Decision mode**: ✅ `sessions.mode = 'decision'`, `selected_winner = 'Prague'`.
 

@@ -4,7 +4,7 @@
 
 **Purpose**: A place to record all open issues, as well as working space to sharpen solutions until they are ready for development.
 
-**Latest update**: 25th June 2026\.
+**Latest update**: 26th June 2026\.
 
 **Project meta-goal**: Test "Real-World AI Engineering". The product should be designed by copying existing solutions from real B2C products (e.g. Mindtrip, Layla). It's a product-copying project, not a meta-coding or meta-product project.
 
@@ -91,7 +91,7 @@ It was noted that a method of picking up a session to continue later would be a 
 
 ### Bugs carried over from previous improvements
 
-1. None at present.
+1. **BUG — Comparison matrix UI drops criteria between turns**: The frontend replaces the displayed comparison matrix wholesale with whatever the LLM returns each turn. If the LLM returns fewer criteria than it did previously, the user sees criteria disappear — even though those rows still exist in the DB. The UI must accumulate criteria across turns (matching DB behaviour) rather than replace them.
 
 ---
 
@@ -118,16 +118,19 @@ Users want to use the chat on their own terms – if at all – not be led by a 
 The idea: “**Chatless” UI**. Effectively, we remove the chatbot. This requires a more robust visual space so that the UX is built around the user managing their OWN exploration/decision journey.
 
 This is a shift in how we use AI as a product. The mental model is less “chat to a travel agent” and more “find your next destination and get help from our travel workspace assistant”.
+
 * When users update profile → agent generates new candidates.  
 * When user shortlists/rejects candidates and wants more → agent generates new candidates.  
-* When users add new comparison rows → agent generates comparison content.  
+* When users add new comparison rows → agent generates comparison content.
 
 Some kind of chat input/output *can* remain (e.g. using a small chat box where the agent asks relevant prompting questions, or a box where users can just ask/say what’s on their mind).
-* When users have a question → they can ask it → agent answers their question.  
+
+* When users have a question → they can ask it → agent answers their question.
 
 Under the hood, the chat history might remain the same as it is today – a coherent transcript of turns with questions and answers interspersed with UX actions (e.g. tell me more, I’d like to compare, find more). However, it probably won’t read as a conversation, because it wasn’t perceived as such from actions taken across the various spaces in the UI.
 
 Ways to reduce the use-cases for the chat component:
+
 * Show the answer to “tell me more” in the visual space, not as a chat response.  
 * Add a button for users to generate new candidate suggestions.  
 * Enable users to give feedback on the candidates, then generate new suggestions.  
@@ -154,7 +157,7 @@ These are two distinct problems with different solutions:
 
 ---
 
-## **4\. Delivery history (as of Sprint 12\)**
+## **4\. Delivery history (as of Sprint 13\)**
 
 | Sprint | Major focus | Other important changes | Release date |
 | :---- | :---- | :---- | :---- |
@@ -170,6 +173,7 @@ These are two distinct problems with different solutions:
 | 10 | Both agents substantially improved. Profile updates stop silently dropping data. "Already have destinations" path added. | vibe and trip\_feel redefined as distinct fields for the first time. | 16 Jun 2026 |
 | 11 | Landing page redesigned. | Single CTA, multi-select vacation type, right panel becomes a journey preview rather than empty space. | 20 Jun 2026 |
 | 12 | Database setup (Supabase). | Five-table schema (`sessions`, `trip_profile`, `candidates`, `comparison_criteria`, `conversation_history`) committed to `supabase/schema.sql`. | 25 Jun 2026 |
+| 13 | Session persistence migration to external DB (Supabase). | `SessionManager` replaced by `SupabaseSessionManager`. All session state reads/writes from Supabase. `POST /sessions` endpoint added. `/chat` behaviour unchanged from user's perspective. | 26 Jun 2026 |
 
 ---
 
@@ -199,19 +203,16 @@ These are two distinct problems with different solutions:
 
 ---
 
-## **6\. Proposed Roadmap for upcoming sprints (Sprints 12-16)**
+## **6\. Proposed Roadmap for upcoming sprints (Sprints 14-16)**
 
 ### Items planned for development
-
-Sprint 13: **Session persistence migration**
-
-* Replace the in-memory `SessionManager` with DB reads/writes. The `/chat` endpoint behaviour is unchanged from the user’s perspective — this is a backend-only change. Stabilise and test before building new endpoints on top.
 
 Sprint 14: **Generation endpoints**
 
 * Add two focused generation endpoints, each a single-purpose LLM call:  
   * `POST /generate/candidates` — given a trip profile, current candidates, rejected candidates, and chat history, return 3 candidates. Writes to candidates table.  
-  * `POST /generate/comparison` — given shortlisted candidates and a trip profile, return matrix rows and card details. Writes to comparison table.
+  * `POST /generate/comparison` — given shortlisted candidates and a trip profile, return matrix rows and card details. Writes to comparison table.  
+* Bug fix: Comparison matrix UI drops criteria between turns.
 
 Sprint 15: **Frontend wired to generation endpoints**
 
@@ -222,9 +223,9 @@ Sprint 15: **Frontend wired to generation endpoints**
 Sprint 16: **Agent simplified**
 
 * Chat becomes a secondary input layer: available for the user to ask questions or add context, but not the mechanism that drives the visual space.  
-  * Tools and scope reduced based on what is learned in Sprint 15. What stays and what goes is a decision for that sprint, not now. 
-* Rewrite agent prompts for the reduced role: probably Q&A, plus profile extraction from conversation.
-  * (Maybe) Remove `TOOL_SUGGEST_CANDIDATES` and `TOOL_GENERATE_COMPARISON_MATRIX` from both agents. 
+  * Tools and scope reduced based on what is learned in Sprint 15\. What stays and what goes is a decision for that sprint, not now.  
+* Rewrite agent prompts for the reduced role: probably Q\&A, plus profile extraction from conversation.  
+  * (Maybe) Remove `TOOL_SUGGEST_CANDIDATES` and `TOOL_GENERATE_COMPARISON_MATRIX` from both agents.  
   * (Maybe) Strip candidates and comparison matrix from the agent's system prompt — it no longer needs them. Context becomes lean by design.  
   * (Probably) The agent's only remaining tool is `update_trip_profile`.
 
