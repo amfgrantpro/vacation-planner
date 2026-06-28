@@ -14,6 +14,7 @@
 | Frontend | `apps/web/src/hooks/useAgent.ts` | Merge incoming comparison criteria into display state; never replace |
 | Backend | `services/api/main.py` | Add `POST /generate/candidates` and `POST /generate/comparison` endpoints |
 | Backend | `services/api/agent/generation.py` | New module: `CandidateGenerator` and `ComparisonGenerator` classes |
+| Backend | `services/api/agent/utils.py` | New module: shared utility functions (history pruning extracted from orchestrator) |
 
 ### What does NOT change
 
@@ -24,22 +25,45 @@
 - The new endpoints are not wired to any UI trigger — Sprint 15 handles that
 - All constraints from prior sprints (listed in Section 9)
 
+### How a generation endpoint works
+
+The generation endpoints are a different kind of LLM call from `/chat`.
+
+`/chat` runs a multi-turn conversational agent. It maintains history, makes two LLM calls per turn (reason then respond), and the agent simultaneously handles conversation, profile extraction, and content generation.
+
+Each generation endpoint is different in kind. It makes **one focused LLM call** with a purpose-built system prompt, a single forced tool, and no conversational back-and-forth. The LLM does one job and returns a structured result via the tool call.
+
+Every LLM call has two parts that work together:
+
+1. **System prompt** — written instructions to the LLM. Defines its role, what to generate, quality expectations, and field-level guidance. Built dynamically from session data at call time. This is the equivalent of the prompts in `prompt.py` for the conversational agents.
+
+2. **Tool definition** — the schema the LLM must use to return its output. The description field instructs the LLM on what to put in each field. The LLM is forced to call this tool (no free-text response).
+
+Both are specified in detail in Sections 3 and 4. The implementer must write both — they are not optional.
+
+Each generator class follows this pattern:
+1. Read required data from DB
+2. Build system prompt from session data
+3. Call LLM: system prompt + tool definition + forced tool call
+4. Parse tool result
+5. Write to DB
+6. Return updated state
+
 ---
 
 ## 2. Comparison matrix UI bug fix
 
-**Bug**: The frontend replaces the displayed comparison matrix wholesale with whatever the LLM returns each `/chat` turn. If the LLM returns fewer criteria than it returned previously, those rows disappear from the user's view — even though the rows exist correctly in the DB.
+**Bug**: The frontend replaces the displayed comparison matrix wholesale with whatever the LLM returns each `/chat` turn. If the LLM returns fewer criteria than previously, those rows disappear from view — even though they exist in the DB.
 
 **Root cause**: `plan.comparison_matrix` is set directly from the API response, replacing prior state.
 
-**Fix**: Merge incoming criteria into the existing displayed state. Existing displayed criteria are never dropped. New criteria from the response are added. No criteria are removed from view by a short LLM response.
+**Fix**: Merge incoming criteria into the existing displayed state. Existing criteria are never dropped. New criteria are added. A short LLM response never removes rows from the display.
 
 **Where**: `apps/web/src/hooks/useAgent.ts`, in the `/chat` response handler where `comparison_matrix` is applied to state.
 
 **Algorithm**:
 
 ```typescript
-// On receiving new plan from /chat response:
 const mergeComparisonMatrix = (
   existing: ComparisonRow[] | null,
   incoming: ComparisonRow[] | null
@@ -47,16 +71,13 @@ const mergeComparisonMatrix = (
   if (!incoming) return existing;
   if (!existing) return incoming;
 
-  // Build a map from criterion name to row
   const merged = new Map(existing.map(row => [row.criterion, { ...row }]));
 
   for (const row of incoming) {
-    const existing_row = merged.get(row.criterion);
-    if (existing_row) {
-      // Update the existing row: add or update destination columns
-      merged.set(row.criterion, { ...existing_row, ...row });
+    const existingRow = merged.get(row.criterion);
+    if (existingRow) {
+      merged.set(row.criterion, { ...existingRow, ...row });
     } else {
-      // Add new criterion row
       merged.set(row.criterion, row);
     }
   }
@@ -65,9 +86,9 @@ const mergeComparisonMatrix = (
 };
 ```
 
-The merge is applied when `plan.comparison_matrix` is updated from a `/chat` response. The function is not called on initial load (when there is no existing state).
+Applied when `plan.comparison_matrix` is updated from a `/chat` response. Not called on initial load.
 
-**Sprint 15 note**: When comparison display is driven by `GET /generate/comparison` directly rather than by `/chat` responses, this accumulation logic is no longer on the `/chat` code path and can be removed — it should not be left as dead code.
+**Sprint 15 note**: When the comparison display is driven by `/generate/comparison` directly rather than `/chat` responses, this logic is no longer on the `/chat` code path. It is deleted in Sprint 15 — not left as dead code.
 
 ---
 
@@ -81,76 +102,132 @@ The merge is applied when `plan.comparison_matrix` is updated from a `/chat` res
 
 ### 3.2 Backend flow
 
-1. Read from DB via `session_manager.get_session()` (or targeted reads — see note below):
+1. Read from DB via `session_manager.get_session()`:
    - Trip profile
-   - All candidates: build three sets —
-     - Rejected: `{name, rejection_reason}` pairs → never re-suggest
-     - Active names: names of all `suggested` and `shortlisted` candidates → avoid duplicating
-2. Read conversation history, pruned using `_prune_history` logic (see implementation note below)
-3. Call LLM with focused prompt and single tool schema (see 3.4 and 3.5)
-4. Parse tool call result: list of `{name, region, vibe}`
-5. For each new candidate, fetch photo from Unsplash (same logic as current agent); fall back to placeholder on failure
-6. Write to DB:
-   - For each returned candidate: upsert by `(session_id, lower(name))`
-   - Status: `suggested`
-   - Fields written: `name`, `region`, `vibe`, `photo_url`
-   - Candidates with `status = 'shortlisted'` or `'rejected'` are never touched
-7. Return response (see 3.6)
+   - All candidates — build two sets:
+     - **Rejected**: `{name, rejection_reason}` pairs — never re-suggest
+     - **Active names**: names of all `suggested` and `shortlisted` candidates — avoid duplicating
+2. Read and prune conversation history using `filter_history` + `prune_history` from `utils.py` (see Section 5)
+3. Build system prompt from session data (see 3.3)
+4. Call LLM: system prompt + pruned history as messages + `suggest_candidates` tool, forced (see 3.4 and 3.5)
+5. Parse tool result: list of `{name, region, vibe}`
+6. For each returned candidate: resolve photo via Unsplash (same logic as current orchestrator); fall back to placeholder on failure
+7. Write to DB: upsert each candidate by `(session_id, lower(name))`; write `name`, `region`, `vibe`, `photo_url`, `status = 'suggested'`; never touch candidates with `status = 'shortlisted'` or `'rejected'`
+8. Return full candidate list from DB post-write (see 3.6)
 
-**Implementation note on reads**: This endpoint may call `session_manager.get_session()` to reuse existing read logic, or implement targeted reads. Either approach is valid — correctness and simplicity take priority.
+### 3.3 System prompt
 
-**Implementation note on pruning**: `_prune_history` is currently a private method on the orchestrator class. `generation.py` should not import the full orchestrator to call one utility function. The pruning logic should be extracted to `services/api/agent/utils.py` (new file) as a standalone function, and both `orchestrator.py` and `generation.py` import from there. This is a small, contained refactor with no behavioural change.
+Built at call time by `CandidateGenerator._build_prompt(profile, rejected, active_names)`. The template below uses `{placeholders}` for dynamic values injected from session data.
 
-### 3.3 Prompt design
+```
+You are an expert travel consultant. Given a traveler's profile and planning session,
+your job is to suggest the 3 best-matching destination candidates they have not yet seen.
 
-The prompt focuses on one job only — destination suggestion. It receives:
+## Traveler Profile
+Origin: {origin or "not specified"}
+Travelers: {travelers or "not specified"}
+When: {when or "not specified"}
+Duration: {duration or "not specified"}
+Budget: {budget or "not specified"}
+Vacation type: {vacation_type as comma-separated list, or "not specified"}
+Likes: {likes as comma-separated list, or "none recorded"}
+Avoid: {avoid as comma-separated list, or "none recorded"}
 
-- The trip profile in structured form (origin, travelers, when, duration, budget, vacation_type, likes, avoid)
-- Rejected candidates and their rejection reasons — framed as "do not suggest any of these destinations again, for these reasons"
-- Names of all currently suggested and shortlisted candidates — framed as "these destinations are already visible to the user; suggest only new ones"
-- Pruned conversation history — preserves nuance not yet formally captured in the profile
+## Already Visible Destinations
+The traveler can already see these destinations on screen — do not suggest them: {active_candidate_names as a bullet list; "None yet" if empty}
 
-It does **not** receive: comparison matrix, mode field, session envelope, or any comparison-related data. These are irrelevant to the candidate suggestion job.
+## Rejected Destinations
+The traveler has explicitly removed these — do not suggest them under any circumstances: {rejected candidates as bullet list: "- {name}: {rejection_reason}"; "None" if empty}
 
-**Candidate count**: Suggest the same default count as the current agent (check current orchestrator/prompt for the target number; preserve it here).
+## Your Task
+Suggest the 3 best-matching destination candidates this traveler has not yet seen.
 
-### 3.4 Tool schema
+Selection rules:
+- Budget and timing are constraints, not loose suggestions.
+- Respect the hard profile constraints. e.g. A traveler flying from {origin} for {duration} should not receive long-haul destinations that are not realistic given the time available.
+- Choose destinations that fit the full profile — not just vacation type and likes, but all of it together.
+- If the recent conversation contains preferences or constraints not yet captured in the profile fields above, factor them in alongside the existing profile fields.
+- Do not suggest any destination that appears in the "Already Visible" or "Rejected" lists above.
 
-Single tool — the LLM must call it:
+For each destination, provide:
+- name: the destination name only (city, region, or country — whichever level is most meaningful for the traveler)
+- region: if a city or area, use its country (e.g. "Spain" for Basque Country, "Italy" for Amalfi Coast). If a country, use a broader geographic grouping (e.g. "Mediterranean" for Malta, "South Asia" for Sri Lanka).
+- vibe: 1-sentence description of what this destination is like and famous for — its character and atmosphere (e.g. 'a laid-back island with whitewashed villages and volcanic beaches').
+```
 
-```json
-{
-  "name": "suggest_candidates",
-  "description": "Suggest new vacation destination candidates based on the trip profile.",
-  "parameters": {
-    "type": "object",
-    "properties": {
-      "candidates": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "name":   { "type": "string" },
-            "region": { "type": "string" },
-            "vibe":   { "type": "string" }
-          },
-          "required": ["name", "region", "vibe"]
-        }
-      }
+**Conversation history**: The pruned history is passed as the message array following the system prompt — user and assistant messages only, tool messages stripped (same as the current orchestrator). The LLM sees recent conversation as context for nuance not yet extracted into the structured profile. Its only output is the tool call.
+
+### 3.4 Tool definition
+
+```python
+TOOL_SUGGEST_CANDIDATES_GENERATION = {
+    "type": "function",
+    "function": {
+        "name": "suggest_candidates",
+        "description": (
+            "Suggest exactly 3 new destination candidates the traveler has not yet seen. "
+            "Choose the best matches for this specific traveler given their full profile "
+            "and the constraints listed. Each candidate must have a name, region, and a "
+            "vibe."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "candidates": {
+                    "type": "array",
+                    "minItems": 3,
+                    "maxItems": 3,
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string",
+                                "description": "Destination name only — no country suffix.",
+                            },
+                            "region": {
+                                "type": "string",
+                                "description": (
+                                    "If a city or area, use its country "
+                                    "(e.g. 'Spain' for Basque Country). "
+                                    "If a country, use a broader geographic grouping "
+                                    "(e.g. 'Mediterranean' for Malta)."
+                                ),
+                            },
+                            "vibe": {
+                                "type": "string",
+                                "description": (
+                                    "1-sentence description of what this destination is like and famous for — its character and atmosphere."
+                                ),
+                            },
+                        },
+                        "required": ["name", "region", "vibe"],
+                    },
+                }
+            },
+            "required": ["candidates"],
+        },
     },
-    "required": ["candidates"]
-  }
 }
 ```
 
-Flat JSON only — no nested schemas, no `additionalProperties` (Groq drops tools that include it).
+Flat JSON only — no `additionalProperties`.
 
-### 3.5 LLM call parameters
+### 3.5 LLM call
 
-- Model: same as current orchestrator (check `orchestrator.py`)
-- Temperature: appropriate for a creative/generative task — recommendation is to match or slightly raise vs. orchestrator default
-- Tool choice: force the LLM to call `suggest_candidates` (Groq: `tool_choice: {"type": "function", "function": {"name": "suggest_candidates"}}`)
-- No system prompt tool-name mention (existing constraint: agent fails when given tool names in system prompt)
+```python
+messages = [{"role": "system", "content": system_prompt}] + pruned_history
+
+response = client.chat.completions.create(
+    model=settings.GROQ_PRIMARY_MODEL,
+    messages=messages,
+    tools=[TOOL_SUGGEST_CANDIDATES_GENERATION],
+    tool_choice={"type": "function", "function": {"name": "suggest_candidates"}},
+)
+```
+
+Rate limit fallback: catch 429, retry on `settings.GROQ_FALLBACK_MODEL` (same pattern as `_call_llm` in orchestrator).
+
+Tool names must not appear in the system prompt text (existing constraint: agent fails when given tool names in instructions).
 
 ### 3.6 Response
 
@@ -171,9 +248,7 @@ Flat JSON only — no nested schemas, no `additionalProperties` (Groq drops tool
 }
 ```
 
-Returns the **full candidate list** from DB post-write (all candidates for this session, not just the newly added ones). This is the format the frontend will need in Sprint 15 — returning it now avoids rework.
-
-> **Decision**: Both endpoints return the full updated state in the format the frontend already uses. Sprint 15 will be complex; the API should be complete and testable before that sprint begins. A `{success: true}` stub would shift real design work into an already-heavy sprint.
+Returns the **full candidate list from DB** post-write — all candidates for this session, not just newly added ones. This is the format Sprint 15 needs; returning it now avoids rework.
 
 ---
 
@@ -188,167 +263,221 @@ Returns the **full candidate list** from DB post-write (all candidates for this 
 ### 4.2 Backend flow
 
 1. Read from DB:
-   - Trip profile (for LLM context)
-   - Shortlisted candidates: `name`, `vibe`, `region`, `trip_feel`, `seasonal_note`
+   - Trip profile
+   - Shortlisted candidates: `name`, `vibe`, `region` (LLM context); `trip_feel`, `seasonal_note` (to identify what needs generating)
    - All `comparison_criteria` rows for this session: `criterion_name`, `candidate_name`, `value`
+   - Conversation history, pruned using `filter_history` + `prune_history` from `utils.py`
 2. Determine what is missing:
-   - If no `comparison_criteria` rows exist → **Mode A** (generate from scratch)
-   - Otherwise → **Mode B** (fill gaps only)
-   - For Mode B: build list of `(criterion_name, candidate_name)` pairs where `value IS NULL`
-   - Separately: build list of shortlisted candidates where `trip_feel IS NULL` or `seasonal_note IS NULL`
-3. If nothing is missing (all cells populated, all trip_feel/seasonal_note set) → return current state immediately, no LLM call
-4. Call LLM with appropriate prompt and tool schema (see 4.4 and 4.5)
-5. Write to DB:
-   - Upsert returned criteria cells (only cells the LLM returned; populated cells untouched)
-   - Update `trip_feel` and `seasonal_note` on `candidates` table where currently null (never overwrite)
-6. Return response (see 4.6)
+   - **Missing cells**: `(criterion_name, candidate_name)` pairs where `value IS NULL`
+   - **Missing enrichments**: shortlisted candidates where `trip_feel IS NULL` or `seasonal_note IS NULL`
+   - **Existing criterion names**: distinct `criterion_name` values across all rows (passed to LLM for naming consistency when filling gaps)
+3. If nothing is missing — all cells populated, all enrichments set — return current state immediately with no LLM call
+4. Build system prompt from session data (see 4.3)
+5. Call LLM: system prompt + `generate_comparison` tool, forced (see 4.4 and 4.5)
+6. Write to DB (see 4.6)
+7. Return response (see 4.7)
 
-### 4.3 Modes
+### 4.3 System prompt
 
-**Mode A — No criteria yet (first call for this session's comparison)**
+Built at call time by `ComparisonGenerator._build_prompt(...)`. The prompt has one conditional block that adapts based on whether criteria already exist. Everything else is fixed.
 
-- Condition: `comparison_criteria` table has zero rows for this session
-- LLM task: generate appropriate criteria for comparing travel destinations, AND fill all cell values for all shortlisted candidates. Also generate `trip_feel` and `seasonal_note` for each shortlisted candidate.
-- LLM receives: trip profile + shortlisted candidates (name, vibe, region)
+```
+You are an expert travel consultant helping a traveler decide between their shortlisted destinations. Your job is to populate a comparison table using what matters most to the user — so they can see, side by side, how their options stack up on the things they actually care about.
 
-**Mode B — Criteria exist; fill gaps**
+## Traveler Profile
+Origin: {origin or "not specified"}
+Travelers: {travelers or "not specified"}
+When: {when or "not specified"}
+Duration: {duration or "not specified"}
+Budget: {budget or "not specified"}
+Vacation type: {vacation_type as comma-separated list, or "not specified"}
+Likes: {likes as comma-separated list, or "none recorded"}
+Avoid: {avoid as comma-separated list, or "none recorded"}
 
-- Condition: at least one `comparison_criteria` row exists for this session
-- LLM task: fill only the specified missing cells using the existing criterion names (for consistency). Also generate missing `trip_feel` / `seasonal_note` where flagged.
-- LLM receives: trip profile + shortlisted candidates (name, vibe, region) + list of existing criterion names + targeted list of `(criterion_name, candidate_name)` pairs with null values
-- The LLM does **not** see already-populated cell values. It only knows what is missing. Complexity sits in the DB read and list-construction logic, not in the prompt.
+## Shortlisted Destinations
+{for each shortlisted candidate:}
+- {name} ({region})
 
-**Why two modes**: on first call, the LLM must decide which criteria to use (no existing criteria to reference). On subsequent calls, the LLM must use the same criterion names for consistency — otherwise it would generate the same concept under a different label, creating duplicate criteria rows.
+## Comparison Table
 
-### 4.4 Tool schemas
+{--- BLOCK A: rendered when comparison_criteria table has zero rows for this session ---}
+No criteria exist yet. Generate a comparison table from scratch.
 
-**Mode A** — single tool `generate_comparison`:
+Choose 5–7 criteria that are genuinely useful for THIS traveler's decision. Ground them in the profile above — the best criteria reflect what this traveler actually cares about. A "Best suited for" row (e.g. "Couples seeking culture and food", "Active families") is a strong opening criterion. "Weather" and "Getting Around" are acceptable starting points, but at least half the criteria should be specific to this trip and this profile.
 
-```json
-{
-  "name": "generate_comparison",
-  "description": "Generate comparison criteria and fill all values for the shortlisted candidates.",
-  "parameters": {
-    "type": "object",
-    "properties": {
-      "criteria": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "criterion_name": { "type": "string" },
-            "values": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "candidate_name": { "type": "string" },
-                  "value":          { "type": "string" }
-                },
-                "required": ["candidate_name", "value"]
-              }
-            }
-          },
-          "required": ["criterion_name", "values"]
-        }
-      },
-      "candidate_enrichments": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "candidate_name":  { "type": "string" },
-            "trip_feel":       { "type": "string" },
-            "seasonal_note":   { "type": "string" }
-          },
-          "required": ["candidate_name", "trip_feel", "seasonal_note"]
-        }
-      }
-    },
-    "required": ["criteria", "candidate_enrichments"]
-  }
-}
+For each criterion, provide a short value for every shortlisted destination — 1–2 sentences at most, at a consistent level of detail between all destinations.
+{--- END BLOCK A ---}
+
+{--- BLOCK B: rendered when at least one comparison_criteria row exists ---}
+The comparison table already uses these criteria. Use the EXACT same names — do not rename, rephrase, or introduce new criteria:
+{existing_criterion_names as a numbered list}
+
+Fill values only for the following missing cells:
+{missing cells listed as: "- {criterion_name} / {candidate_name}"}
+
+Use the same level of detail and tone as the values already in the table — 1–2 sentences at most, at a consistent level of detail between all destinations.
+{--- END BLOCK B ---}
+
+{--- ENRICHMENT BLOCK: rendered only when at least one shortlisted candidate has trip_feel IS NULL or seasonal_note IS NULL ---}
+## Destination Enrichments
+
+For each destination listed below, provide trip_feel and seasonal_note. Only destinations in this list need enrichment — do not provide these fields for destinations not listed here.
+
+{shortlisted candidates where trip_feel IS NULL or seasonal_note IS NULL, listed as: "- {name}"}
+
+For each listed destination:
+- trip_feel: What would THIS traveler's experience here actually feel like, given their
+  specific profile and how they think about vacations? Think about their travel style, companions, budget, and what they have said they value. This is personal — it is not a general description of the destination. Do not repeat or paraphrase the vibe.
+- seasonal_note: What is this destination like during {when}? Focus on what is relevant to a traveler — weather, crowd levels, local events, anything time-specific.
+{--- END ENRICHMENT BLOCK ---}
+
+{--- NO-ENRICHMENT LINE: rendered only when no candidates need enrichment ---}
+No destination enrichments are needed this call — return an empty candidate_enrichments array.
+{--- END NO-ENRICHMENT LINE ---}
 ```
 
-**Mode B** — single tool `fill_comparison_gaps`:
+**`vibe` is intentionally excluded from the Shortlisted Destinations section.** The existing compare agent strips `vibe` from candidates before passing them to the LLM (`_clean_candidates_for_prompt` in `prompt.py`, compare/decision mode). The same reasoning applies here: showing `vibe` to the LLM when it needs to write `trip_feel` causes it to anchor on the vibe text and produce a near-copy. `name` and `region` are sufficient for the LLM to reason about the destination for both criteria generation and enrichment. Do not add `vibe` back.
 
-```json
-{
-  "name": "fill_comparison_gaps",
-  "description": "Fill in missing comparison values and any missing candidate enrichments.",
-  "parameters": {
-    "type": "object",
-    "properties": {
-      "cells": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "criterion_name":  { "type": "string" },
-            "candidate_name":  { "type": "string" },
-            "value":           { "type": "string" }
-          },
-          "required": ["criterion_name", "candidate_name", "value"]
-        }
-      },
-      "candidate_enrichments": {
-        "type": "array",
-        "items": {
-          "type": "object",
-          "properties": {
-            "candidate_name":  { "type": "string" },
-            "trip_feel":       { "type": "string" },
-            "seasonal_note":   { "type": "string" }
-          },
-          "required": ["candidate_name", "trip_feel", "seasonal_note"]
-        }
-      }
+**Conversation history** is passed as the message array following the system prompt — same pruning as the candidates endpoint (user and plain assistant messages only, tool messages stripped). Profile extraction is imperfect; a user who said "my partner has dietary restrictions" or "I need somewhere with good infrastructure" three turns ago deserves to have that influence the criteria the endpoint generates.
+
+### 4.4 Tool definition
+
+One tool covers both cases — generate from scratch and fill gaps. The prompt controls what the LLM generates; the application layer controls what gets written to DB.
+
+```python
+TOOL_GENERATE_COMPARISON = {
+    "type": "function",
+    "function": {
+        "name": "generate_comparison",
+        "description": (
+            "Populate the comparison table and destination enrichments as instructed. "
+            "If generating criteria from scratch, choose criteria grounded in this "
+            "specific traveler's profile. If filling gaps, use the exact criterion "
+            "names provided — do not rename or add new ones. "
+            "Provide trip_feel and seasonal_note only for destinations listed in the "
+            "enrichment section."
+        ),
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "criteria": {
+                    "type": "array",
+                    "description": (
+                        "Comparison criteria with values for each destination. "
+                        "Each criterion has a name and one value per shortlisted candidate."
+                    ),
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "criterion_name": {
+                                "type": "string",
+                                "description": "The criterion label (e.g. 'Best time to go'). Must match existing names exactly when filling gaps.",
+                            },
+                            "values": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "candidate_name": {"type": "string"},
+                                        "value": {
+                                            "type": "string",
+                                            "description": "Short, comparable value — 1–2 sentences, consistent detail level across all destinations.",
+                                        },
+                                    },
+                                    "required": ["candidate_name", "value"],
+                                },
+                            },
+                        },
+                        "required": ["criterion_name", "values"],
+                    },
+                },
+                "candidate_enrichments": {
+                    "type": "array",
+                    "description": "trip_feel and seasonal_note for destinations that need them. Only include destinations listed in the enrichment section of the prompt.",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "candidate_name": {"type": "string"},
+                            "trip_feel": {
+                                "type": "string",
+                                "description": "How THIS traveler is expected to experience this destination. It is NOT not a description of the location - it is a description of the kind of trip that this user would have in this location.",
+                            },
+                            "seasonal_note": {
+                                "type": "string",
+                                "description": "What this destination is like during the traveler's planned travel period.",
+                            },
+                        },
+                        "required": ["candidate_name", "trip_feel", "seasonal_note"],
+                    },
+                },
+            },
+            "required": ["criteria", "candidate_enrichments"],
+        },
     },
-    "required": ["cells", "candidate_enrichments"]
-  }
 }
 ```
 
 Flat JSON only — no `additionalProperties`.
 
-### 4.5 Write behavior (cell-locking enforcement)
-
-**`comparison_criteria`**: Cell-locking is enforced at the application layer, not solely at the SQL layer.
-
-Before writing, filter the LLM's returned cells against the null-cell set that was passed to the LLM:
+### 4.5 LLM call
 
 ```python
-# null_cells = set of (criterion_name, candidate_name) pairs identified as null in step 2
-# Only write cells that were in the null set — drop anything else the LLM returned
-cells_to_write = [
-    cell for cell in llm_returned_cells
-    if (cell["criterion_name"], cell["candidate_name"]) in null_cells
-]
+messages = [{"role": "system", "content": system_prompt}] + pruned_history
+
+response = client.chat.completions.create(
+    model=settings.GROQ_PRIMARY_MODEL,
+    messages=messages,
+    tools=[TOOL_GENERATE_COMPARISON],
+    tool_choice={"type": "function", "function": {"name": "generate_comparison"}},
+)
 ```
 
-Then upsert only those filtered cells:
-```
-UPSERT {session_id, criterion_name, candidate_name, value}
-ON CONFLICT (session_id, criterion_name, candidate_name) DO UPDATE SET value = EXCLUDED.value
+Rate limit fallback: same pattern as orchestrator.
+
+### 4.6 Write behavior (cell-locking enforcement)
+
+**`comparison_criteria`**: Cell-locking is enforced at the application layer — not solely at the SQL layer (supabase-py's upsert does not expose a conditional `WHERE value IS NULL` on conflict).
+
+Before writing, filter the LLM's returned cells against the null-cell set that was passed to the LLM. Only write cells that were in that set:
+
+```python
+# null_cells: set of (criterion_name, candidate_name) identified as null in step 2
+cells_to_write = []
+for criterion in llm_result["criteria"]:
+    for cell in criterion["values"]:
+        key = (criterion["criterion_name"], cell["candidate_name"])
+        if key in null_cells:
+            cells_to_write.append({
+                "session_id": session_id,
+                "criterion_name": criterion["criterion_name"],
+                "candidate_name": cell["candidate_name"],
+                "value": cell["value"],
+            })
+
+# Upsert only the filtered cells
+supabase.table("comparison_criteria").upsert(
+    cells_to_write,
+    on_conflict="session_id,criterion_name,candidate_name",
+).execute()
 ```
 
-This makes cell-locking a hard guarantee regardless of LLM behaviour. If the LLM returns a cell it wasn't asked about (hallucination or off-script response), that cell is silently dropped before it reaches the DB — it never gets the chance to overwrite a populated value. The planning doc states "existing populated values are never overwritten" as a hard guarantee; this enforces it.
+If the LLM returns a cell it was not asked to fill, it is silently dropped before reaching the DB. This makes cell-locking a hard guarantee regardless of LLM behaviour.
 
-Note: The SQL `WHERE comparison_criteria.value IS NULL` predicate on the conflict action would achieve the same thing at the DB layer, but `supabase-py`'s upsert method does not expose that condition through its PostgREST interface. Application-layer filtering is the practical equivalent.
+**`candidates` — `trip_feel` / `seasonal_note`**: Update only where the field is currently null. Execute one update per field per candidate:
 
-**`candidates` — `trip_feel` / `seasonal_note`**: Update only where the field is currently null:
-```
+```sql
 UPDATE candidates
 SET trip_feel = :value
 WHERE session_id = :session_id
   AND lower(name) = lower(:candidate_name)
   AND trip_feel IS NULL
 ```
+
 Same pattern for `seasonal_note`. Never overwrite an already-populated value.
 
-**Known carry-forward**: After Sprint 14, `save_session` still upserts to `comparison_criteria` whenever the conversational agent fires `TOOL_GENERATE_COMPARISON_MATRIX` via chat. This can overwrite a cell value that `/generate/comparison` already filled. It cannot delete rows (upsert-never-delete is enforced). The full resolution — removing the tool from the compare agent, or replacing it with a call to `/generate/comparison` — is Sprint 16. This is a known, accepted constraint.
+**Known carry-forward**: After Sprint 14, `save_session` still writes to `comparison_criteria` when the conversational agent fires `TOOL_GENERATE_COMPARISON_MATRIX` via chat. This can overwrite a cell value that `/generate/comparison` already filled. It cannot delete rows (upsert-never-delete is enforced at the DB level). Full resolution is Sprint 16: removing the tool from the compare agent makes `/generate/comparison` the sole writer.
 
-### 4.6 Response
+### 4.7 Response
 
 ```json
 {
@@ -369,27 +498,63 @@ Same pattern for `seasonal_note`. Never overwrite an already-populated value.
 }
 ```
 
-`comparison_matrix` is the full matrix from DB post-write, shortlisted candidates only, in the in-memory format the frontend already expects. `candidates` contains only shortlisted candidates, with `trip_feel` and `seasonal_note` populated.
+`comparison_matrix` is the full matrix from DB post-write (shortlisted candidates only), reconstructed into the flat in-memory format the frontend already expects — see Section 7.1 for the conversion. `candidates` contains all shortlisted candidates with `trip_feel` and `seasonal_note` populated.
 
-> **Decision**: Same as above — return the full matrix and enriched candidates now. See Q1 decision.
+Returns the full updated state now, not a success stub — Sprint 15 wiring will be complex and the API contract should be finalized and testable before that sprint begins.
 
 ---
 
-## 5. New module: `services/api/agent/generation.py`
+## 5. New modules
 
-Both generator classes live here — separate from `session.py` (state management) and `orchestrator.py` (conversational loop). This keeps the responsibilities distinct:
+### `services/api/agent/generation.py`
+
+Both generator classes live here — separate from `session.py` (state management) and `orchestrator.py` (conversational loop):
 
 | Module | Responsibility |
 |---|---|
-| `session.py` | DB reads and writes (session state) |
+| `session.py` | DB reads and writes |
 | `orchestrator.py` | Conversational ReAct loop |
 | `generation.py` | Focused, stateless LLM generation calls |
 
-**`CandidateGenerator`**: wraps the `/generate/candidates` flow. Constructor takes a `SupabaseSessionManager` and Groq client. Single public method: `generate(session_id: str) -> list[dict]`.
+**`CandidateGenerator`**:
+- Constructor: `SupabaseSessionManager`, Groq client
+- `_build_prompt(profile, rejected, active_names) -> str`: builds system prompt
+- `generate(session_id: str) -> dict`: full read → prompt → LLM → write → return flow
 
-**`ComparisonGenerator`**: wraps the `/generate/comparison` flow. Same constructor pattern. Single public method: `generate(session_id: str) -> dict`.
+**`ComparisonGenerator`**:
+- Constructor: `SupabaseSessionManager`, Groq client
+- `_build_prompt(profile, shortlisted, existing_criteria, missing_cells, missing_enrichments) -> str`: builds system prompt, selecting Block A or Block B for the criteria section
+- `generate(session_id: str) -> dict`: full flow
 
-Both classes are instantiated once at startup in `main.py`, alongside `session_manager`.
+Both instantiated once at startup in `main.py`.
+
+The tool definitions (`TOOL_SUGGEST_CANDIDATES_GENERATION`, `TOOL_GENERATE_COMPARISON`) are module-level constants in `generation.py`, following the same pattern as the tool constants in `orchestrator.py`.
+
+### `services/api/agent/utils.py`
+
+New module containing shared utility functions. Extracts the history-pruning logic currently private to `AgentOrchestrator`:
+
+```python
+MAX_HISTORY_TURNS = 5  # Keep in sync with orchestrator.py
+
+def filter_history(history: list) -> list:
+    """Strip tool messages — keep only user and plain assistant text messages."""
+    return [
+        m for m in history
+        if m.get("role") != "tool" and not m.get("tool_calls")
+    ]
+
+def prune_history(history: list) -> list:
+    """All user messages kept; assistant replies kept for last MAX_HISTORY_TURNS turns only."""
+    filtered = filter_history(history)
+    user_indices = [i for i, m in enumerate(filtered) if m.get("role") == "user"]
+    if len(user_indices) <= MAX_HISTORY_TURNS:
+        return filtered
+    cutoff = user_indices[-MAX_HISTORY_TURNS]
+    return [m for i, m in enumerate(filtered) if m.get("role") == "user" or i >= cutoff]
+```
+
+`orchestrator.py` is updated to call these functions in place of its private `_filter_history` / `_prune_history` methods. No behavioural change.
 
 ---
 
@@ -407,8 +572,7 @@ class GenerateRequest(BaseModel):
 @app.post("/generate/candidates")
 async def generate_candidates(request: GenerateRequest):
     try:
-        result = candidate_generator.generate(request.session_id)
-        return result
+        return candidate_generator.generate(request.session_id)
     except HTTPException:
         raise
     except Exception as e:
@@ -417,107 +581,123 @@ async def generate_candidates(request: GenerateRequest):
 @app.post("/generate/comparison")
 async def generate_comparison(request: GenerateRequest):
     try:
-        result = comparison_generator.generate(request.session_id)
-        return result
+        return comparison_generator.generate(request.session_id)
     except HTTPException:
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 ```
 
-Both endpoints return a 404 if the session does not exist (raised from within the generator when `get_session` raises).
+Both endpoints return 404 if the session does not exist (raised from `get_session`).
 
 ---
 
 ## 7. Data reference
 
-### 7.1 Comparison matrix: in-memory format ↔ DB ↔ API response
+### 7.1 Comparison matrix: tool output → DB → API response
 
-**In-memory / API response format** (unchanged from Sprint 13):
+**Tool output** (`generate_comparison` result):
+```python
+{
+  "criteria": [
+    {
+      "criterion_name": "Best time to go",
+      "values": [
+        {"candidate_name": "Santorini", "value": "May–Oct"},
+        {"candidate_name": "Amalfi Coast", "value": "Apr–Jun"}
+      ]
+    }
+  ]
+}
+```
+
+**In DB** (`comparison_criteria` table):
+```
+session_id | criterion_name   | candidate_name | value
+<uuid>     | Best time to go  | Santorini      | May–Oct
+<uuid>     | Best time to go  | Amalfi Coast   | Apr–Jun
+```
+
+**API response / in-memory format** (reconstructed from DB, same as current `get_session` output):
 ```python
 [
-    {"criterion": "Best time to go", "Santorini": "May–Oct", "Amalfi Coast": "Apr–Jun"},
-    {"criterion": "Getting around",  "Santorini": "ATV / bus", "Amalfi Coast": "Ferry / scooter"},
+  {"criterion": "Best time to go", "Santorini": "May–Oct", "Amalfi Coast": "Apr–Jun"}
 ]
 ```
 
-**In DB** (`comparison_criteria`):
-```
-session_id | criterion_name   | candidate_name | value
----------- | ---------------- | -------------- | -----------
-<uuid>     | Best time to go  | Santorini      | May–Oct
-<uuid>     | Best time to go  | Amalfi Coast   | Apr–Jun
-<uuid>     | Getting around   | Santorini      | ATV / bus
-<uuid>     | Getting around   | Amalfi Coast   | Ferry / scooter
-```
-
-**Read for LLM context (Mode B)**: rows with `value IS NULL` produce the targeted missing-cells list. The full set of criterion names (from all rows, regardless of null) gives the LLM the vocabulary for consistent naming.
+The `get_session` method in `session.py` already performs this reconstruction. The `/generate/comparison` response reads from DB post-write and uses the same reconstruction logic.
 
 ### 7.2 `trip_feel` and `seasonal_note` — where they live
 
-Both fields live on the `candidates` table (not in `comparison_criteria`). They are generated by `/generate/comparison`, not by `/generate/candidates`, because:
+Both fields live on the `candidates` table, not in `comparison_criteria`. Generated by `/generate/comparison` because:
 - Only 2–4 of up to 15 suggested candidates typically get shortlisted
-- Generating them at candidate-suggestion time would produce content for destinations the user never compares
+- Generating them at candidate-suggestion time produces content for destinations the user never compares
 
 ---
 
 ## 8. End-to-end verification checklist
 
-After implementation, verify the following using the running app + Supabase Table Editor.
+### How verification works
 
-**Phase A — Comparison matrix UI fix**
+Phases B–G require calling the new endpoints directly — outside the app UI. The PM will do this alongside the coding agent during the verification run. The coding agent is responsible for providing exact curl commands (or Postman instructions) at the time of testing, using the real session ID from Phase A. The session ID is captured once and reused across all phases.
 
-- [ ] Run a compare-mode session (via `/chat`) that generates 4+ criteria
-- [ ] Send a follow-up turn that returns only 2 criteria in the response
+The coding agent should not mark implementation complete until all phases below have been verified with the PM.
+
+### Verification tools
+
+- **Running app**: both backend (`uvicorn`) and frontend (`npm run dev`) must be running
+- **Supabase Table Editor**: used to inspect DB state after each endpoint call — open the project in the Supabase dashboard and check the relevant table directly
+- **curl or Postman**: used to call the generation endpoints. The coding agent will provide the exact command at testing time.
+
+---
+
+**Phase A — Comparison matrix UI fix** *(use the app UI)*
+- [ ] Run a full compare-mode session via the app — get to Compare phase with 4+ criteria visible
+- [ ] Send a follow-up chat message that causes the agent to regenerate the matrix with fewer criteria
 - [ ] Verify: all 4+ criteria remain visible in the UI — none disappear
-- [ ] Verify: the 2 returned criteria rows are updated if their values changed; the other 2 are preserved unchanged
+- [ ] Verify: updated rows reflect the new values; preserved rows are unchanged
+- [ ] **Copy the session ID from this session** — it will be used for Phases B–G
 
-**Phase B — `/generate/candidates` (first call)**
+**Phase B — `/generate/candidates` (first call)** *(coding agent provides curl command)*
+- [ ] Call `POST /generate/candidates` with the session ID from Phase A
+- [ ] Verify: 200 response; `candidates` array in the response contains 3 new destinations
+- [ ] Verify in Supabase `candidates` table: new rows present with `status = 'suggested'`; shortlisted/rejected rows untouched
+- [ ] Verify: `photo_url` is populated (or fallback placeholder) for each new candidate
 
-- [ ] Use Postman / curl: `POST /generate/candidates {"session_id": "<uuid>"}`
-- [ ] Verify: HTTP 200 response; `candidates` array contains new destinations
-- [ ] Verify: Supabase `candidates` table — new rows inserted with `status = 'suggested'`; existing shortlisted/rejected rows untouched
-- [ ] Verify: `photo_url` populated (or fallback placeholder) for each new candidate
-- [ ] Verify: previously shortlisted or rejected candidates are not present in the response as new suggestions
+**Phase C — `/generate/candidates` (repeat call)** *(coding agent provides curl command)*
+- [ ] Call the same endpoint again on the same session
+- [ ] Verify in Supabase: no duplicate rows created; existing suggested candidates updated in place or new ones added
+- [ ] Verify: shortlisted candidates remain untouched
 
-**Phase C — `/generate/candidates` (repeat call)**
+**Phase D — `/generate/comparison` (no criteria yet)** *(use a fresh session or clear criteria rows; coding agent advises)*
+- [ ] Ensure the session has 2–3 shortlisted candidates and no existing `comparison_criteria` rows
+- [ ] Call `POST /generate/comparison` with the session ID
+- [ ] Verify: 200 response; `comparison_matrix` in the response contains 5–7 criteria with values for all shortlisted candidates
+- [ ] Verify in Supabase `comparison_criteria` table: one row per (criterion × candidate) pair, all values populated
+- [ ] Verify in Supabase `candidates` table: shortlisted candidates now have `trip_feel` and `seasonal_note` set
 
-- [ ] Call the endpoint a second time on the same session
-- [ ] Verify: no duplicates created; existing suggested candidates updated in place or new ones added
-- [ ] Verify: shortlisted candidates remain untouched in DB
+**Phase E — `/generate/comparison` (fill gaps — new shortlisted candidate)** *(use the app UI, then curl)*
+- [ ] Add a new candidate to the shortlist via the app; confirm in Supabase it has no `comparison_criteria` rows and no `trip_feel`/`seasonal_note`
+- [ ] Call `POST /generate/comparison` again
+- [ ] Verify in Supabase `comparison_criteria`: only the new candidate's cells were written; existing cells for other candidates are unchanged
+- [ ] Verify in Supabase `candidates`: new candidate's `trip_feel` and `seasonal_note` are set; other candidates' values unchanged
 
-**Phase D — `/generate/comparison` (Mode A — first call)**
+**Phase F — Cell-locking: populated values not overwritten** *(coding agent advises)*
+- [ ] Note the exact value of one populated cell in Supabase (e.g. the "Best time to go" row for one candidate)
+- [ ] Call `POST /generate/comparison` again on the same session
+- [ ] Verify in Supabase: that cell's value is unchanged
 
-- [ ] Start a session with 2–3 shortlisted candidates; no prior comparison_criteria rows
-- [ ] `POST /generate/comparison {"session_id": "<uuid>"}`
-- [ ] Verify: HTTP 200; `comparison_matrix` array in response
-- [ ] Verify: `comparison_criteria` rows written — one per (criterion × candidate) pair, all values populated
-- [ ] Verify: shortlisted candidates in `candidates` table now have `trip_feel` and `seasonal_note` populated
-
-**Phase E — `/generate/comparison` (Mode B — fill gaps)**
-
-- [ ] Add a new shortlisted candidate (via chat); it has no comparison_criteria rows and no trip_feel/seasonal_note
-- [ ] `POST /generate/comparison {"session_id": "<uuid>"}`
-- [ ] Verify: only the new candidate's cells are written; existing cells for other candidates are untouched
-- [ ] Verify: new candidate's `trip_feel` and `seasonal_note` are set; others unchanged
-
-**Phase F — Cell-locking: populated values not overwritten**
-
-- [ ] Note the value of one populated cell (e.g. "Best time to go" / "Santorini") in Supabase
-- [ ] Call `/generate/comparison` again
-- [ ] Verify: that cell's value is unchanged in DB
-
-**Phase G — Nothing missing: no LLM call**
-
-- [ ] Verify that calling `/generate/comparison` on a fully-populated session returns current state immediately (can be observed via response speed; no Groq call in logs)
+**Phase G — Nothing missing: no LLM call** *(coding agent advises)*
+- [ ] Call `POST /generate/comparison` on the fully-populated session
+- [ ] Verify: response is fast (no LLM call); no Groq request appears in the backend server logs
 
 ---
 
 ## 9. Constraints carried forward
 
-All constraints from Sprints 1–13 are preserved. New constraints added this sprint:
+All constraints from Sprints 1–13 are preserved. New constraints this sprint:
 
-1. **`/generate/candidates` and `/generate/comparison` are not wired to any UI trigger** — endpoints exist and are verified; Sprint 15 connects them to the frontend.
-2. **Cell-locking under `/chat` is not enforced** — `save_session` can still overwrite `comparison_criteria` values when the conversational agent fires `TOOL_GENERATE_COMPARISON_MATRIX`. This is a known, accepted constraint until Sprint 16.
-3. **`/generate/comparison` Mode A generates criteria from scratch** — on first call with no existing rows, the LLM defines the criteria. In Mode B, existing criterion names are passed to the LLM to enforce naming consistency.
-4. **Comparison matrix UI merge is temporary** — the `mergeComparisonMatrix` logic added in Section 2 is dead code from Sprint 15 onward (when the display is driven by `/generate/comparison` instead of `/chat` responses). It is removed in Sprint 15, not left in place.
+1. **Generation endpoints are not wired to any UI trigger** — endpoints exist and are verified; Sprint 15 connects them.
+2. **Cell-locking under `/chat` is not enforced** — `save_session` can still overwrite `comparison_criteria` values when the conversational agent fires `TOOL_GENERATE_COMPARISON_MATRIX`. Known, accepted constraint until Sprint 16.
+3. **`/generate/comparison` generates criteria from the LLM on first call** — when no criteria exist, the LLM defines them. On subsequent calls, existing criterion names are passed to enforce naming consistency.
+4. **Comparison matrix UI merge is temporary** — `mergeComparisonMatrix` in Section 2 is deleted in Sprint 15, not left in place.

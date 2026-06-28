@@ -188,8 +188,8 @@ These are two distinct problems with different solutions:
 **Architectural destination**:
 
 * State lives in a database. Sessions, trip profile, candidates, comparison criteria, and conversation history persist across requests and across sessions. Nothing lives in server-side memory.  
-* Dedicated generation endpoints handle AI tasks: suggest candidates given a profile, generate comparison content given a shortlist, produce rich card detail on demand. Each endpoint does one job. Each is a focused, stateless LLM call — read from DB, call LLM, write result to DB, return.  
-* The conversational agent's role is reduced to two things: extract trip profile information from what the user says in natural language, and answer questions. It no longer manages the visual space and no longer needs candidates or comparison data in its context.  
+* Dedicated generation endpoints handle AI tasks: suggest candidates given a profile, generate comparison content given a shortlist, produce rich card detail on demand. Each endpoint does one job. Each is a focused, single-purpose LLM call — read what it needs from DB, call LLM, write result to DB, return. (Note that the endpoints could be given more than just Profile for useable context).
+* The conversational agent's role is reduced to two things: extract trip profile information from what the user says in natural language, and answer questions. It no longer manages the visual space and no longer needs candidates or comparison data in its context.
 * The frontend calls generation endpoints directly from UI actions. Profile changes, candidate refresh, comparison generation, and card detail are all triggered by the user in the visual space — not by sending a message to chat.  
 * Chat is an optional input layer for questions and natural-language context. It is not required to move the product forward.
 

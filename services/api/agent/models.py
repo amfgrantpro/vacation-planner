@@ -18,7 +18,7 @@ class DestinationCandidate(BaseModel):
     """A destination candidate in exploration or comparison."""
     name: str
     region: str
-    vibe: str  # Written specifically for this user
+    vibe: str  # Destination character and atmosphere — a general description of the location
     photo_url: str
     status: str = "suggested"  # "suggested" | "shortlisted" | "rejected"
     trip_feel: Optional[str] = None
