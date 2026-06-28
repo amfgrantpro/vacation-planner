@@ -7,8 +7,14 @@ from agent.prototype_orchestrator import AgentOrchestrator as PrototypeAgentOrch
 from agent.session import SupabaseSessionManager, prototype_session_manager
 from agent.models import VacationPlan, UiState, DestinationCandidate, TripProfile, RejectedCandidate
 from agent.prototype_models import VacationPlan as PrototypeVacationPlan
+from agent.generation import CandidateGenerator, ComparisonGenerator
+from core.llm import get_groq_client
+from core.config import settings
 
 session_manager = SupabaseSessionManager()
+groq_client = get_groq_client(settings.GROQ_API_KEY)
+candidate_generator = CandidateGenerator(session_manager, groq_client)
+comparison_generator = ComparisonGenerator(session_manager, groq_client)
 
 app = FastAPI(title="Agentic Travel Planner API")
 
@@ -22,6 +28,10 @@ app.add_middleware(
 
 
 class SessionCreateResponse(BaseModel):
+    session_id: str
+
+
+class GenerateRequest(BaseModel):
     session_id: str
 
 
@@ -61,6 +71,26 @@ async def create_session():
     try:
         session_id = session_manager.create_session()
         return SessionCreateResponse(session_id=session_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/generate/candidates")
+async def generate_candidates(request: GenerateRequest):
+    try:
+        return candidate_generator.generate(request.session_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/generate/comparison")
+async def generate_comparison(request: GenerateRequest):
+    try:
+        return comparison_generator.generate(request.session_id)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

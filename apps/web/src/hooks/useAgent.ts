@@ -1,6 +1,27 @@
 import { useState, useRef } from 'react';
 import type { VacationPlan, ChatMessage, UiState, RejectedCandidate, TripProfile } from '../types';
 
+const mergeComparisonMatrix = (
+    existing: Record<string, string>[] | null,
+    incoming: Record<string, string>[] | null
+): Record<string, string>[] | null => {
+    if (!incoming) return existing;
+    if (!existing) return incoming;
+
+    const merged = new Map(existing.map(row => [row.criterion, { ...row }]));
+
+    for (const row of incoming) {
+        const existingRow = merged.get(row.criterion);
+        if (existingRow) {
+            merged.set(row.criterion, { ...existingRow, ...row });
+        } else {
+            merged.set(row.criterion, row);
+        }
+    }
+
+    return Array.from(merged.values());
+};
+
 
 export function useAgent() {
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -70,7 +91,13 @@ export function useAgent() {
             };
 
             setMessages([...newMessages, assistantMessage]);
-            setPlan(data.plan);
+            setPlan(prev => {
+                const mergedMatrix = mergeComparisonMatrix(
+                    prev?.comparison_matrix ?? null,
+                    data.plan.comparison_matrix
+                );
+                return { ...data.plan, comparison_matrix: mergedMatrix };
+            });
             // Client is authoritative for mode — never overwrite from server.
             // Sync shortlist and winner from server candidates (they're the source of truth
             // for status; client shortlist additions are optimistic until confirmed).

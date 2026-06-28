@@ -4,6 +4,7 @@ from typing import Optional, List
 from groq import BadRequestError
 from .models import VacationPlan, DestinationCandidate, TripProfile, UiState
 from .prompt import ExplorePrompts, ComparisonPrompts
+from .utils import prune_history
 from core.llm import get_groq_client
 from core.config import settings
 from core.image_resolver import resolve_destination_photo
@@ -164,8 +165,6 @@ COMPARISON_CONFIG = AgentConfig(
 # Orchestrator
 # ---------------------------------------------------------------------------
 
-MAX_HISTORY_TURNS = 5  # increased from 4 after live testing showed the model benefits from more assistant-reply context
-
 TOOL_FORMAT_NUDGE = {
     "role": "system",
     "content": (
@@ -200,38 +199,6 @@ class AgentOrchestrator:
     def __init__(self, config: AgentConfig):
         self.config = config
         self.client = get_groq_client(config.api_key)
-
-    def _filter_history(self, history: list) -> list:
-        """Strip tool infrastructure from history before sending to the LLM.
-
-        Keeps only user messages and plain assistant text replies — the chat
-        as the user sees it. Tool call messages and tool result messages carry
-        no information the current state JSON doesn't already capture.
-        """
-        return [
-            m for m in history
-            if m.get("role") != "tool" and not m.get("tool_calls")
-        ]
-
-    def _prune_history(self, history: list) -> list:
-        """Two-pass pruning over already-filtered (user, assistant) history.
-
-        Pass 1: every user message is retained, in chronological order — the
-        traveler's full expressed preferences stay in context for the whole
-        session, including across an agent handoff on mode change.
-        Pass 2: the last MAX_HISTORY_TURNS user messages additionally retain
-        their assistant replies. Assistant replies from older turns are dropped.
-
-        Expects history that has already passed through _filter_history, so
-        every message is either {"role": "user", ...} or a plain-text
-        {"role": "assistant", ...} (no tool / tool_calls messages).
-        """
-        user_indices = [i for i, m in enumerate(history) if m.get("role") == "user"]
-        if len(user_indices) <= MAX_HISTORY_TURNS:
-            return history
-
-        cutoff = user_indices[-MAX_HISTORY_TURNS]
-        return [m for i, m in enumerate(history) if m.get("role") == "user" or i >= cutoff]
 
     def _get_tools_for_mode(self, mode: str) -> list:
         """Return tools appropriate for the current mode, scoped to this agent."""
@@ -414,7 +381,7 @@ class AgentOrchestrator:
         plan = current_plan
         tools_for_mode = self._get_tools_for_mode(plan.mode)
         new_messages = []
-        pruned_history = self._prune_history(self._filter_history(conversation_history))
+        pruned_history = prune_history(conversation_history)
 
         # --- CALL 1: LLM reasons and generates tool calls ---
         plan_dict = plan.model_dump()
